@@ -1,0 +1,24 @@
+{
+  "name": "dateify-js",
+  "description": "Lightweight javascript date/time library",
+  "version": "0.1.0",
+  "main": "dateify.js",
+  "authors": [
+    "jasmith79@gmail.com"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "date",
+    "time",
+    "javascript"
+  ],
+  "homepage": "https://github.com/jasmith79/dateify-js",
+  "moduleType": [],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
