@@ -8,9 +8,35 @@
  */
 
 /*   Imports   */
-import * as d from 'decorators';
+import * as d from '../node_modules/decorators-js/dist/decorators.min.js';
+
+//remove this stub later
+let document = document || {
+  createElement: function(){
+    return {
+      setAttribute: function(k, v) {
+        this[k] = v;
+      },
+      pattern: true
+    }
+  }
+};
 
 /*   Constants   */
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+];;
 
 //none of the regexs are foolproof, but good enough for a quick and dirty check
 
@@ -44,19 +70,24 @@ const [DATE_TYPE_SUPPORTED, PATTERN_SUPPORTED] = (() => {
 })();
 
 /*   Private Functions   */
+//type checks
+const _takesString  = d.typeGuard('string');
+const _takesDate    = d.typeGuard(Date);
+const _dateOrString = d.typeGuard(['string', Date]);
+const _takesFn      = d.typeGuard('function');
+const _takesNum     = d.typeGuard('number');
 
 //Has IE workaround for lack of function name property on Functions
 //_getFnName :: (* -> *) -> String
-const _getFnName = fn => fn.name || ((('' + fn).match(FN_NAME_REGEX) || [])[1] || 'Anonymous');
+const _getFnName = _takesFn(fn => {
+  return fn.name || ((('' + fn).match(FN_NAME_REGEX) || [])[1] || 'Anonymous')
+});
 
 //padInt :: Number -> String
-const _padInt = num => num > 9 ? '' + num : '0' + num;
+const _padInt = _takesNum(num => num > 9 ? '' + num : '0' + num);
 
-//makeDate :: Number -> Date
-const makeDate = d.unNew(0, Date);
-
-//makeUTCDate :: Number -> Date
-const makeUTCDate = d.unNew(0, Date.UTC);
+//_makeDate :: Number -> Date
+const _makeDate = d.unNew(0, Date);
 
 const wait500 = d.debounce(500);
 
@@ -76,10 +107,12 @@ const _callWithTag = tag => {
     };
   };
 };
+
 //_upgradeInput :: String, String -> (HTMLElement -> HTMLElement)
 const _upgradeInput = (tag, type) => {
   let guard = _callWithTag(tag);
   return guard(input => {
+    throw new Error('shouldnt see me')
     input.value = defValue;
     let valid, def, regex;
     switch (type) {
@@ -113,6 +146,72 @@ const _upgradeInput = (tag, type) => {
   });
 };
 
+//_parseDate :: Date -> [Number]
+const _parseDate = _takesDate((date) => {
+  return [
+    date.getFullYear(),
+    date.getMonth(), //no +1
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+    date.getTimezoneOffset()
+  ];
+});
+
+//_parseDateString :: String -> [Number]
+const _parseDateString = _takesString(str => {
+  let yr, hr, min, sec, mon, day, tzOff, tz;
+  let datestr = str.replace(/\//g, '-');
+  let ISOdate = datestr.match(VALID_DATE);
+  let ISOtime = datestr.match(VALID_TIME);
+  switch (false) {
+    case (!datestr.match(DATESTR_REGEX)):
+      let [
+        ,
+        month,
+        dy,
+        year,
+        time,
+        timezone
+      ] = datestr.split(' ');
+      mon = MONTHS.indexOf(month);
+      day = +dy;
+      yr  = +yr;
+      [hr, min, sec] = time ? time.split(':').map(x => +x) : [0,0,0];
+      tzOff = timezone ? timezone.split('T')[1] : null;
+      break;
+    case (!(ISOdate && ISOtime)):
+      let datepart   = ISOdate[0];
+      [yr, mon, day] = datepart.split('-').map(x => +x);
+      [hr, min, sec] = ISOtime[0]
+        .match(/[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?/)[0]
+        .split(':')
+        .map(x => +x);
+      tzOff = (ISOtime[0].match(/[-+][0-2][0-9]:[0-5][0-9]/) || [])[0];
+      mon -= 1;
+      break;
+    case (!ISOdate):
+      [yr, mon, day] = ISOdate[0].split('-').map(x => +x);
+      mon -= 1;
+      break;
+    default:
+      throw new Error(`Datestring ${datestr} format not recognized`);
+      break;
+  }
+  tz = tzOff ?
+    ((t) => {
+      let sign = t[0] === '+' ? t[0] : '-';
+      let rest = t.slice(1);
+      let [hour, min] = rest.indexOf(':') === -1 ?
+        [rest.slice(0,2), rest.slice(2,4)] :
+        rest.split(':');
+      return +(sign + hour) * 60 + +(sign + min); //IDKWTF js does tzoffsets in *minutes*
+    })(tzOff) :
+    0;
+  return [yr, mon, day, hr, min, sec, tz].map(x => x || 0);
+});
+
 /*   Public Functions   */
 
 //* :: HTMLElement -> HTMLElement
@@ -122,81 +221,65 @@ const toPaperDate = _upgradeInput('paper-input', 'date');
 const toPaperTime = _upgradeInput('paper-input', 'time');
 
 //dateify :: String -> Date
-const dateify = d.typeGuard('string', str => {
-  let datestr = str.replace(/\//g, '-');
-  let jsDateStr = datestr.match(DATESTR_REGEX);
-  if (jsDateStr) {
-    return makeDate(jsDateStr);
-  }
-
-  let type, yr, hr, min, sec, mon, day, tzOff;
-  let ISOdate   = datestr.match(VALID_DATE);
-  let ISOtime   = datestr.match(VALID_TIME);
-  switch (true) {
-    case (ISOdate && ISOtime):
-      let datepart   = ISOdate[0];
-      [yr, mon, day] = datepart.split('-');
-      [hr, min, sec] = ISOtime[0].split(':');
-      tzOff = (ISOtime[0].match(/[-+][0-2][0-9]:[0-5][0-9]/) || [])[0];
-      break;
-    case (ISOdate):
-      [yr, mon, day] = ISOdate[0].split('-');
-      break;
-    default:
-      throw new Error(`Datestring ${datestr} format not recognized`);
-      break;
-  }
-  let month = mon ? '' + (+mon + 1) : mon;
-  let args = [yr, month, day, hr, min, sec].filter(x => x != null);
-  if ((datestr.indexOf('Z') !== -1) || !tzOff) {
-    return makeDate.apply(null, args);
+const dateify = _takesString(str => {
+  let args = _parseDateString(str);
+  if ((str.indexOf('Z') !== -1) || !args[args.length - 1]) {
+    return _makeDate(...args);
   } else {
-    return makeDate(makeUTCDate.apply(null, args));
+    return _makeDate(Date.UTC(...args));
   }
 });
 
 //deDateify :: Date -> String
-const deDateify = d.typeGuard(Date, date => {
+const deDateify = _takesDate(date => {
   return `${date.getFullYear()}-${_padInt(date.getMonth() + 1)}-${_padInt(date.getDate())}`;
 });
 
 //isLeapYear :: Number -> Boolean
-const isLeapYear = d.typeGuard('number', year => {
-  let passed = true, yr = +year;
-  if (yr <= 0 || (yr % 4)) {
-    passed = false;
-  } else {
-    if (yr % 400) {
-      if (!(yr % 100)) {
-        passed = false;
+const isLeapYear = ((err) => {
+  return _takesNum(yr => {
+    //check for the special years, see https://www.wwu.edu/skywise/leapyear.html
+    if (yr === 0) {
+      throw err;
+    }
+    //after 8 AD, follows 'normal' leap year rules
+    let passed = true;
+    //not technically true as there were 13 LY BCE, but hey.
+    if (yr === 4 || yr < 0 || (yr % 4)) {
+      passed = false;
+    } else {
+      if (yr % 400) {
+        if (!(yr % 100)) {
+          passed = false;
+        }
       }
     }
-  }
-  return passed;
-});
+    return passed;
+  });
+})(new Error('Year zero does not exist, refers to 1 BCE'));
 
 //toUTCDate :: Date   -> Date
 //toUTCDate :: String -> Date
 //Converts javascript Date Object from browser's timezone to GMT. Somewhat idempotent: if you call
 //this on a Date, serialize it, then pass it back to the function it will apply the offset twice.
-const toUTCDate = day => {
+const toUTCDate = d.typeGuard(['string', Date], day => {
   if (day._convertedToUTC) {
-    return date;
+    return day;
   }
   let date = day instanceof Date ? day : dateify(day);
-  let obj  = makeDate(+date + (date.getTimezoneOffset() * 60000));
+  let obj  = _makeDate(+date + (date.getTimezoneOffset() * 60000));
   obj._convertedToUTC = true; //need to make sure that we don't double-dip
   return obj
-};
+});
 
 //toUTCDateString :: Date   -> String
 //toUTCDateString :: String -> String
 //Returns date string in UTC time ISO 8601 format - YYYY-MM-DDTHH:MM:SSZ
-const toUTCDateString = day => {
+const toUTCDateString = d.typeGuard(['string', Date], day => {
   let date = toUTCDate(day);
   let str = deDateify(date);
   return `${str}T${_padInt(date.getHours())}:${_padInt(date.getMinutes())}:${_padInt(date.getSeconds())}Z`;
-};
+});
 
 export {
   toDateInput,
