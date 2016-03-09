@@ -14,7 +14,10 @@ clean:
 	rm -r dist
 
 test:
-	@jasmine
+	phantomjs spec/run-jasmine.js spec/index.html
+
+jasmine:
+	jasmine
 
 $(MOD):
 	@mkdir -p $(@D)
@@ -27,4 +30,4 @@ $(MIN): $(MOD)
 $(TEST):
 	babel spec/test.es -o $@
 
-.PHONY: test clean build install all
+.PHONY: test clean build install all jasmine

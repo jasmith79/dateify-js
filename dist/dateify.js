@@ -1,16 +1,16 @@
 (function (global, factory) {
   if (typeof define === "function" && define.amd) {
-    define(['exports', '../node_modules/decorators-js/dist/decorators.min.js'], factory);
+    define(['exports', '../node_modules/decorators-js/dist/decorators.js'], factory);
   } else if (typeof exports !== "undefined") {
-    factory(exports, require('../node_modules/decorators-js/dist/decorators.min.js'));
+    factory(exports, require('../node_modules/decorators-js/dist/decorators.js'));
   } else {
     var mod = {
       exports: {}
     };
-    factory(mod.exports, global.decoratorsMin);
+    factory(mod.exports, global.decorators);
     global.dateify = mod.exports;
   }
-})(this, function (exports, _decoratorsMin) {
+})(this, function (exports, _decorators) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -18,7 +18,7 @@
   });
   exports.toUTCDateString = exports.toUTCDate = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
 
-  var d = _interopRequireWildcard(_decoratorsMin);
+  var d = _interopRequireWildcard(_decorators);
 
   function _interopRequireWildcard(obj) {
     if (obj && obj.__esModule) {
@@ -194,9 +194,9 @@
     return guard(function (input) {
       throw new Error('shouldnt see me');
       input.value = defValue;
-      var valid = undefined,
-          def = undefined,
-          regex = undefined;
+      var valid = void 0,
+          def = void 0,
+          regex = void 0;
       switch (type) {
         case 'date':
           valid = VALID_DATE;
@@ -236,14 +236,14 @@
 
   //_parseDateString :: String -> [Number]
   var _parseDateString = _takesString(function (str) {
-    var yr = undefined,
-        hr = undefined,
-        min = undefined,
-        sec = undefined,
-        mon = undefined,
-        day = undefined,
-        tzOff = undefined,
-        tz = undefined;
+    var yr = void 0,
+        hr = void 0,
+        min = void 0,
+        sec = void 0,
+        mon = void 0,
+        day = void 0,
+        tzOff = void 0,
+        tz = void 0;
     var datestr = str.replace(/\//g, '-');
     var ISOdate = datestr.match(VALID_DATE);
     var ISOtime = datestr.match(VALID_TIME);
@@ -299,6 +299,7 @@
         sec = _ISOtime$0$match$0$sp2[2];
 
         tzOff = (ISOtime[0].match(/[-+][0-2][0-9]:[0-5][0-9]/) || [])[0];
+        mon -= 1;
         break;
       case !ISOdate:
         var _ISOdate$0$split$map = ISOdate[0].split('-').map(function (x) {
@@ -311,14 +312,15 @@
         mon = _ISOdate$0$split$map2[1];
         day = _ISOdate$0$split$map2[2];
 
+        mon -= 1;
         break;
       default:
         throw new Error('Datestring ' + datestr + ' format not recognized');
         break;
     }
     tz = tzOff ? function (t) {
-      var sign = tzOff[0];
-      var rest = tzOff.slice(1);
+      var sign = t[0] === '+' ? t[0] : '-';
+      var rest = t.slice(1);
 
       var _ref5 = rest.indexOf(':') === -1 ? [rest.slice(0, 2), rest.slice(2, 4)] : rest.split(':');
 
@@ -327,7 +329,7 @@
       var hour = _ref6[0];
       var min = _ref6[1];
 
-      return +hour * 60 + +min; //IDKWTF js does tzoffsets in *minutes*
+      return +(sign + hour) * 60 + +(sign + min); //IDKWTF js does tzoffsets in *minutes*
     }(tzOff) : 0;
     return [yr, mon, day, hr, min, sec, tz].map(function (x) {
       return x || 0;
@@ -348,9 +350,7 @@
     if (str.indexOf('Z') !== -1 || !args[args.length - 1]) {
       return _makeDate.apply(undefined, _toConsumableArray(args));
     } else {
-      var _Date;
-
-      return _makeDate((_Date = Date).UTC.apply(_Date, _toConsumableArray(args)));
+      return _makeDate(Date.UTC.apply(Date, _toConsumableArray(args)));
     }
   });
 

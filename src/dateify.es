@@ -8,7 +8,7 @@
  */
 
 /*   Imports   */
-import * as d from '../node_modules/decorators-js/dist/decorators.min.js';
+import * as d from '../node_modules/decorators-js/dist/decorators.js';
 
 //remove this stub later
 let document = document || {
