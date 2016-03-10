@@ -11,16 +11,16 @@
 import * as d from '../node_modules/decorators-js/dist/decorators.js';
 
 //remove this stub later
-let document = document || {
-  createElement: function(){
-    return {
-      setAttribute: function(k, v) {
-        this[k] = v;
-      },
-      pattern: true
-    }
-  }
-};
+// let document = document || {
+//   createElement: function(){
+//     return {
+//       setAttribute: function(k, v) {
+//         this[k] = v;
+//       },
+//       pattern: true
+//     }
+//   }
+// };
 
 /*   Constants   */
 const MONTHS = [
@@ -84,67 +84,67 @@ const _getFnName = _takesFn(fn => {
 });
 
 //padInt :: Number -> String
-const _padInt = _takesNum(num => num > 9 ? '' + num : '0' + num);
+const _padInt = d.padInt(2);
 
 //_makeDate :: Number -> Date
 const _makeDate = d.unNew(0, Date);
 
 const wait500 = d.debounce(500);
 
-//decorator for ensuring arg is an HTML input/paper-input
-const _callWithTag = tag => {
-  return fn => {
-    return elem => {
-      let el = elem == null ? document.createElement(tag) : elem;
-      if (!(el instanceof HTMLElement)) {
-        throw new TypeError(`Function ${_getFnName(fn)} called with invalid type ${typeof el}`);
-      }
-      if (!(elem.tagName.match(IS_INPUT))) {
+//_upgradeInput :: String, String -> (HTMLElement -> HTMLElement)
+//_upgradeInput :: String, String -> (Null -> HTMLElement)
+const _upgradeInput = ((timeValidator, dateValidator) => {
+  return _takesString((tag, type) => {
+    return el => {
+      let input = el || document.createElement(tag);
+      if (!input.tagName.match(IS_INPUT)) {
         //works in IE 8+ and every browser I care about
         console.warn(`Unable to verify function ${_getFnName(fn)} called with input element.`);
       }
-      return fn(el);
-    };
-  };
-};
+      // switch (true) {
+      //   case (DATE_TYPE_SUPPORTED):
+      //     input.setAttribute('type', type);
+      //     break;
+      //   case (PATTERN_SUPPORTED):
+      //     input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+      //     break;
+      // }
+      input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+      input.value = input.DEFAULT;
+      let validfn = type === 'date' ? dateValidator : timeValidator;
 
-//_upgradeInput :: String, String -> (HTMLElement -> HTMLElement)
-const _upgradeInput = (tag, type) => {
-  let guard = _callWithTag(tag);
-  return guard(input => {
-    throw new Error('shouldnt see me')
-    input.value = defValue;
-    let valid, def, regex;
-    switch (type) {
-      case 'date':
-        valid     = VALID_DATE;
-        def       = DATE_DEFAULT;
-        regex     = DATE_DEF_REGEX;
-        break;
-      case 'time':
-        valid     = VALID_TIME;
-        def       = TIME_DEFAULT;
-        regex     = TIME_DEF_REGEX;
-        break;
-      default:
-        throw new TypeError(`Unsupported type ${type} applied to input`);
-    }
-    switch (true) {
-      case (DATE_TYPE_SUPPORTED):
-        input.setAttribute('type', type);
-        break;
-      case (PATTERN_SUPPORTED):
-        input.setAttribute('pattern', valid);
-        break;
-      default:
-        input.addEventListener('change', wait500(e => {
-          let value = e.currentTarget.value;
-          //do validatey stuffs
+      input.validate = function(fn) {
+        let ctx = this;
+        ctx.addEventListener('change', wait500((e) => {
+          ctx.valid = false;
+          validfn.call(ctx, fn);
         }));
-        break;
-    }
-  });
-};
+      };
+      input.validate(function(e) {
+        if (!this.value) {
+          this.value = this.DEFAULT;
+        }
+      });
+      return input;
+    };
+  })
+})(function(fn) {
+  let def = this.value.match(TIME_DEF_REGEX);
+  let valid = def || this.value.match(VALID_TIME);
+  if (!valid) {
+    fn.call(this, this);
+  } else {
+    this.valid = true;
+  }
+}, function(fn) {
+  let def = this.value.match(DATE_DEF_REGEX);
+  let valid = def || this.value.match(VALID_DATE);
+  if (!valid) {
+    fn.call(this, this);
+  } else {
+    this.valid = true;
+  }
+});
 
 //_parseDate :: Date -> [Number]
 const _parseDate = _takesDate((date) => {
@@ -159,8 +159,16 @@ const _parseDate = _takesDate((date) => {
   ];
 });
 
-//_parseDateString :: String -> [Number]
-const _parseDateString = _takesString(str => {
+/*   Public Functions   */
+
+//* :: HTMLElement -> HTMLElement
+const toDateInput = _upgradeInput('input', 'date');
+const toTimeInput = _upgradeInput('input', 'time');
+const toPaperDate = _upgradeInput('paper-input', 'date');
+const toPaperTime = _upgradeInput('paper-input', 'time');
+
+//dateify :: String -> Date
+const dateify = _takesString(str => {
   let yr, hr, min, sec, mon, day, tzOff, tz;
   let datestr = str.replace(/\//g, '-');
   let ISOdate = datestr.match(VALID_DATE);
@@ -177,9 +185,9 @@ const _parseDateString = _takesString(str => {
       ] = datestr.split(' ');
       mon = MONTHS.indexOf(month);
       day = +dy;
-      yr  = +yr;
+      yr  = +year;
       [hr, min, sec] = time ? time.split(':').map(x => +x) : [0,0,0];
-      tzOff = timezone ? timezone.split('T')[1] : null;
+      tzOff = timezone ? timezone.match(/[A-Z]{3}([-+][0-9]{4})/)[1] : null;
       break;
     case (!(ISOdate && ISOtime)):
       let datepart   = ISOdate[0];
@@ -199,6 +207,8 @@ const _parseDateString = _takesString(str => {
       throw new Error(`Datestring ${datestr} format not recognized`);
       break;
   }
+  let tempD = _makeDate(...[yr, mon, day, hr, min, sec].map(x => x || 0));
+  let n = tempD.getTime();
   tz = tzOff ?
     ((t) => {
       let sign = t[0] === '+' ? t[0] : '-';
@@ -209,29 +219,9 @@ const _parseDateString = _takesString(str => {
       return +(sign + hour) * 60 + +(sign + min); //IDKWTF js does tzoffsets in *minutes*
     })(tzOff) :
     0;
-  return [yr, mon, day, hr, min, sec, tz].map(x => x || 0);
+  return _makeDate(n - (tz * 60 * 1000));
 });
 
-/*   Public Functions   */
-
-//* :: HTMLElement -> HTMLElement
-const toDateInput = _upgradeInput('input', 'date');
-const toTimeInput = _upgradeInput('input', 'time');
-const toPaperDate = _upgradeInput('paper-input', 'date');
-const toPaperTime = _upgradeInput('paper-input', 'time');
-
-//dateify :: String -> Date
-const dateify = _takesString(str => {
-  let args = _parseDateString(str);
-  // if ((str.indexOf('Z') !== -1) || !args[args.length - 1]) {
-  //   //return _makeDate(...args);
-  //   return _makeDate(Date.UTC(...args));
-  // } else {
-  //   return _makeDate(...args);
-  //   //return _makeDate(Date.UTC(...args));
-  // }
-  makeDate(...args);
-});
 
 //deDateify :: Date -> String
 const deDateify = _takesDate(date => {
@@ -261,27 +251,16 @@ const isLeapYear = ((err) => {
   });
 })(new Error('Year zero does not exist, refers to 1 BCE'));
 
-//toUTCDate :: Date   -> Date
-//toUTCDate :: String -> Date
-//Converts javascript Date Object from browser's timezone to GMT. Somewhat idempotent: if you call
-//this on a Date, serialize it, then pass it back to the function it will apply the offset twice.
-const toUTCDate = d.typeGuard(['string', Date], day => {
-  if (day._convertedToUTC) {
-    return day;
-  }
-  let date = day instanceof Date ? day : dateify(day);
-  let obj  = _makeDate(+date + (date.getTimezoneOffset() * 60000));
-  obj._convertedToUTC = true; //need to make sure that we don't double-dip
-  return obj
-});
-
 //toUTCDateString :: Date   -> String
 //toUTCDateString :: String -> String
 //Returns date string in UTC time ISO 8601 format - YYYY-MM-DDTHH:MM:SSZ
-const toUTCDateString = d.typeGuard(['string', Date], day => {
-  let date = toUTCDate(day);
+const toUTCDateString = _dateOrString(day => {
+  let date = day instanceof Date ?
+    _makeDate(day.getTime() + (day.getTimezoneOffset() * 60 * 1000)) :
+    dateify(day);
   let str = deDateify(date);
-  return `${str}T${_padInt(date.getHours())}:${_padInt(date.getMinutes())}:${_padInt(date.getSeconds())}Z`;
+  return str +
+    `T${_padInt(date.getHours())}:${_padInt(date.getMinutes())}:${_padInt(date.getSeconds())}Z`;
 });
 
 export {
@@ -292,6 +271,5 @@ export {
   dateify,
   deDateify,
   isLeapYear,
-  toUTCDate,
   toUTCDateString,
 };

@@ -20,6 +20,9 @@ test:
 jasmine:
 	jasmine
 
+serve:
+	node spec/server.js
+
 $(MOD):
 	@mkdir -p $(@D)
 	babel $(SRC) -o $@

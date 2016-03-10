@@ -16,7 +16,7 @@
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.toUTCDateString = exports.toUTCDate = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
+  exports.toUTCDateString = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
 
   var d = _interopRequireWildcard(_decorators);
 
@@ -48,12 +48,6 @@
       return Array.from(arr);
     }
   }
-
-  var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
-    return typeof obj;
-  } : function (obj) {
-    return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj;
-  };
 
   var _slicedToArray = function () {
     function sliceIterator(arr, i) {
@@ -94,16 +88,16 @@
   }();
 
   //remove this stub later
-  var document = document || {
-    createElement: function createElement() {
-      return {
-        setAttribute: function setAttribute(k, v) {
-          this[k] = v;
-        },
-        pattern: true
-      };
-    }
-  };
+  // let document = document || {
+  //   createElement: function(){
+  //     return {
+  //       setAttribute: function(k, v) {
+  //         this[k] = v;
+  //       },
+  //       pattern: true
+  //     }
+  //   }
+  // };
 
   /*   Constants   */
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];;
@@ -162,9 +156,7 @@
   });
 
   //padInt :: Number -> String
-  var _padInt = _takesNum(function (num) {
-    return num > 9 ? '' + num : '0' + num;
-  });
+  var _padInt = d.padInt(2);
 
   //_makeDate :: Number -> Date
   var _makeDate = d.unNew(0, Date);
@@ -172,61 +164,71 @@
   var wait500 = d.debounce(500);
 
   //decorator for ensuring arg is an HTML input/paper-input
-  var _callWithTag = function _callWithTag(tag) {
-    return function (fn) {
-      return function (elem) {
-        var el = elem == null ? document.createElement(tag) : elem;
-        if (!(el instanceof HTMLElement)) {
-          throw new TypeError('Function ' + _getFnName(fn) + ' called with invalid type ' + (typeof el === 'undefined' ? 'undefined' : _typeof(el)));
-        }
-        if (!elem.tagName.match(IS_INPUT)) {
+  var _callWithTag = d.curry(function (tag, fn) {
+    return d.typeGuard([null, 'undefined', 'HTMLElement'], function (el) {
+      var elem = el || document.createElement(tag);
+      if (!elem.tagName.match(IS_INPUT)) {
+        //works in IE 8+ and every browser I care about
+        console.warn('Unable to verify function ' + _getFnName(fn) + ' called with input element.');
+      }
+      return fn(el);
+    });
+  });
+
+  //_upgradeInput :: String, String -> (HTMLElement -> HTMLElement)
+  //_upgradeInput :: String, String -> (Null -> HTMLElement)
+  var _upgradeInput = function (timeValidator, dateValidator) {
+    return _takesString(function (tag, type) {
+      return d.typeGuard([null, 'undefined', 'HTMLElement'], function (el) {
+        var input = el || document.createElement(tag);
+        if (!input.tagName.match(IS_INPUT)) {
           //works in IE 8+ and every browser I care about
           console.warn('Unable to verify function ' + _getFnName(fn) + ' called with input element.');
         }
-        return fn(el);
-      };
-    };
-  };
+        // switch (true) {
+        //   case (DATE_TYPE_SUPPORTED):
+        //     input.setAttribute('type', type);
+        //     break;
+        //   case (PATTERN_SUPPORTED):
+        //     input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+        //     break;
+        // }
+        input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+        input.value = input.DEFAULT;
+        var validfn = type === 'date' ? dateValidator : timeValidator;
 
-  //_upgradeInput :: String, String -> (HTMLElement -> HTMLElement)
-  var _upgradeInput = function _upgradeInput(tag, type) {
-    var guard = _callWithTag(tag);
-    return guard(function (input) {
-      throw new Error('shouldnt see me');
-      input.value = defValue;
-      var valid = void 0,
-          def = void 0,
-          regex = void 0;
-      switch (type) {
-        case 'date':
-          valid = VALID_DATE;
-          def = DATE_DEFAULT;
-          regex = DATE_DEF_REGEX;
-          break;
-        case 'time':
-          valid = VALID_TIME;
-          def = TIME_DEFAULT;
-          regex = TIME_DEF_REGEX;
-          break;
-        default:
-          throw new TypeError('Unsupported type ' + type + ' applied to input');
-      }
-      switch (true) {
-        case DATE_TYPE_SUPPORTED:
-          input.setAttribute('type', type);
-          break;
-        case PATTERN_SUPPORTED:
-          input.setAttribute('pattern', valid);
-          break;
-        default:
-          input.addEventListener('change', wait500(function (e) {
-            var value = e.currentTarget.value;
-            //do validatey stuffs
+        input.validate = function (fn) {
+          var ctx = this;
+          ctx.addEventListener('change', wait500(function (e) {
+            ctx.valid = false;
+            validfn.call(ctx, fn);
           }));
-          break;
-      }
+        };
+        input.validate(function (e) {
+          if (!this.value) {
+            this.value = this.DEFAULT;
+          }
+        });
+        return input;
+      });
     });
-  };
+  }(function (fn) {
+    var def = this.value.match(TIME_DEF_REGEX);
+    var valid = def || this.value.match(VALID_TIME);
+    if (!valid) {
+      fn.call(this, this);
+    } else {
+      this.valid = true;
+    }
+  }, function (fn) {
+    var def = this.value.match(DATE_DEF_REGEX);
+    var valid = def || this.value.match(VALID_DATE);
+    if (!valid) {
+      fn.call(this, this);
+    } else {
+      this.valid = true;
+    }
+  });
 
   //_parseDate :: Date -> [Number]
   var _parseDate = _takesDate(function (date) {
@@ -234,8 +236,16 @@
     date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), date.getTimezoneOffset()];
   });
 
-  //_parseDateString :: String -> [Number]
-  var _parseDateString = _takesString(function (str) {
+  /*   Public Functions   */
+
+  //* :: HTMLElement -> HTMLElement
+  var toDateInput = _upgradeInput('input', 'date');
+  var toTimeInput = _upgradeInput('input', 'time');
+  var toPaperDate = _upgradeInput('paper-input', 'date');
+  var toPaperTime = _upgradeInput('paper-input', 'time');
+
+  //dateify :: String -> Date
+  var dateify = _takesString(function (str) {
     var yr = void 0,
         hr = void 0,
         min = void 0,
@@ -261,7 +271,7 @@
 
         mon = MONTHS.indexOf(month);
         day = +dy;
-        yr = +yr;
+        yr = +year;
 
         var _ref3 = time ? time.split(':').map(function (x) {
           return +x;
@@ -273,7 +283,7 @@
         min = _ref4[1];
         sec = _ref4[2];
 
-        tzOff = timezone ? timezone.split('T')[1] : null;
+        tzOff = timezone ? timezone.match(/[A-Z]{3}([-+][0-9]{4})/)[1] : null;
         break;
       case !(ISOdate && ISOtime):
         var datepart = ISOdate[0];
@@ -318,6 +328,10 @@
         throw new Error('Datestring ' + datestr + ' format not recognized');
         break;
     }
+    var tempD = _makeDate.apply(undefined, _toConsumableArray([yr, mon, day, hr, min, sec].map(function (x) {
+      return x || 0;
+    })));
+    var n = tempD.getTime();
     tz = tzOff ? function (t) {
       var sign = t[0] === '+' ? t[0] : '-';
       var rest = t.slice(1);
@@ -331,29 +345,7 @@
 
       return +(sign + hour) * 60 + +(sign + min); //IDKWTF js does tzoffsets in *minutes*
     }(tzOff) : 0;
-    return [yr, mon, day, hr, min, sec, tz].map(function (x) {
-      return x || 0;
-    });
-  });
-
-  /*   Public Functions   */
-
-  //* :: HTMLElement -> HTMLElement
-  var toDateInput = _upgradeInput('input', 'date');
-  var toTimeInput = _upgradeInput('input', 'time');
-  var toPaperDate = _upgradeInput('paper-input', 'date');
-  var toPaperTime = _upgradeInput('paper-input', 'time');
-
-  //dateify :: String -> Date
-  var dateify = _takesString(function (str) {
-    var args = _parseDateString(str);
-    if (str.indexOf('Z') !== -1 || !args[args.length - 1]) {
-      //return _makeDate(...args);
-      return _makeDate(Date.UTC.apply(Date, _toConsumableArray(args)));
-    } else {
-      return _makeDate.apply(undefined, _toConsumableArray(args));
-      //return _makeDate(Date.UTC(...args));
-    }
+    return _makeDate(n - tz * 60 * 1000);
   });
 
   //deDateify :: Date -> String
@@ -384,27 +376,13 @@
     });
   }(new Error('Year zero does not exist, refers to 1 BCE'));
 
-  //toUTCDate :: Date   -> Date
-  //toUTCDate :: String -> Date
-  //Converts javascript Date Object from browser's timezone to GMT. Somewhat idempotent: if you call
-  //this on a Date, serialize it, then pass it back to the function it will apply the offset twice.
-  var toUTCDate = d.typeGuard(['string', Date], function (day) {
-    if (day._convertedToUTC) {
-      return day;
-    }
-    var date = day instanceof Date ? day : dateify(day);
-    var obj = _makeDate(+date + date.getTimezoneOffset() * 60000);
-    obj._convertedToUTC = true; //need to make sure that we don't double-dip
-    return obj;
-  });
-
   //toUTCDateString :: Date   -> String
   //toUTCDateString :: String -> String
   //Returns date string in UTC time ISO 8601 format - YYYY-MM-DDTHH:MM:SSZ
-  var toUTCDateString = d.typeGuard(['string', Date], function (day) {
-    var date = toUTCDate(day);
+  var toUTCDateString = _dateOrString(function (day) {
+    var date = day instanceof Date ? _makeDate(day.getTime() + day.getTimezoneOffset() * 60 * 1000) : dateify(day);
     var str = deDateify(date);
-    return str + 'T' + _padInt(date.getHours()) + ':' + _padInt(date.getMinutes()) + ':' + _padInt(date.getSeconds()) + 'Z';
+    return str + ('T' + _padInt(date.getHours()) + ':' + _padInt(date.getMinutes()) + ':' + _padInt(date.getSeconds()) + 'Z');
   });
 
   exports.toDateInput = toDateInput;
@@ -414,6 +392,5 @@
   exports.dateify = dateify;
   exports.deDateify = deDateify;
   exports.isLeapYear = isLeapYear;
-  exports.toUTCDate = toUTCDate;
   exports.toUTCDateString = toUTCDateString;
 });

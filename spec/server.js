@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 var http = require('http');
 var fs   = require('fs');
-var d    = require('../dist/decorators.min.js');
+var d    = require('../node_modules/decorators-js/dist/decorators.js');
 //var dir  = '/Users/jared/Dev/decorators-js';
 var dir  = '.';
 var read = d.denodeify(fs.readFile);
