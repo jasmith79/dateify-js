@@ -19,7 +19,8 @@
     "node_modules",
     "bower_components"
   ],
-  "dependencies": [
-    "https://github.com/jasmith79/decorators-js.git"
-  ]
+  "dependencies": {
+    "polymer": "~1.2.3",
+    "paper-input": "PolymerElements/paper-input#~1.1.3"
+  }
 }
