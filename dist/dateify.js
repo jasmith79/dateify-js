@@ -163,23 +163,11 @@
 
   var wait500 = d.debounce(500);
 
-  //decorator for ensuring arg is an HTML input/paper-input
-  var _callWithTag = d.curry(function (tag, fn) {
-    return d.typeGuard([null, 'undefined', 'HTMLElement'], function (el) {
-      var elem = el || document.createElement(tag);
-      if (!elem.tagName.match(IS_INPUT)) {
-        //works in IE 8+ and every browser I care about
-        console.warn('Unable to verify function ' + _getFnName(fn) + ' called with input element.');
-      }
-      return fn(el);
-    });
-  });
-
   //_upgradeInput :: String, String -> (HTMLElement -> HTMLElement)
   //_upgradeInput :: String, String -> (Null -> HTMLElement)
   var _upgradeInput = function (timeValidator, dateValidator) {
     return _takesString(function (tag, type) {
-      return d.typeGuard([null, 'undefined', 'HTMLElement'], function (el) {
+      return function (el) {
         var input = el || document.createElement(tag);
         if (!input.tagName.match(IS_INPUT)) {
           //works in IE 8+ and every browser I care about
@@ -210,7 +198,7 @@
           }
         });
         return input;
-      });
+      };
     });
   }(function (fn) {
     var def = this.value.match(TIME_DEF_REGEX);
