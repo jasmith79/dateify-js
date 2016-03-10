@@ -7,6 +7,7 @@ TEST  := dist/test.js
 
 all: install build
 build: $(MIN) $(TEST)
+
 install:
 	npm install
 

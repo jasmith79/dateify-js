@@ -53,7 +53,7 @@
   describe('dateify', function () {
     it('should handle datestrings in various formats', function () {
       expect(dateify.dateify(iso).getTime()).toBe(n);
-      expect(dateify.dateify(isoz).getTime()).toBe(n);
+      expect(dateify.dateify(isoz).getTime()).toBe(n); //coming through as 3pm local
       // expect(dateify.dateify(isotz).getTime()).toBe(n);
       // expect(dateify.dateify(meh).getTime()).toBe(n);
       // expect(dateify.dateify(jsstr).getTime()).toBe(n);

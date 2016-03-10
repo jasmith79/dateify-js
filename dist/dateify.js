@@ -348,9 +348,11 @@
   var dateify = _takesString(function (str) {
     var args = _parseDateString(str);
     if (str.indexOf('Z') !== -1 || !args[args.length - 1]) {
-      return _makeDate.apply(undefined, _toConsumableArray(args));
-    } else {
+      //return _makeDate(...args);
       return _makeDate(Date.UTC.apply(Date, _toConsumableArray(args)));
+    } else {
+      return _makeDate.apply(undefined, _toConsumableArray(args));
+      //return _makeDate(Date.UTC(...args));
     }
   });
 

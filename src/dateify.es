@@ -223,11 +223,14 @@ const toPaperTime = _upgradeInput('paper-input', 'time');
 //dateify :: String -> Date
 const dateify = _takesString(str => {
   let args = _parseDateString(str);
-  if ((str.indexOf('Z') !== -1) || !args[args.length - 1]) {
-    return _makeDate(...args);
-  } else {
-    return _makeDate(Date.UTC(...args));
-  }
+  // if ((str.indexOf('Z') !== -1) || !args[args.length - 1]) {
+  //   //return _makeDate(...args);
+  //   return _makeDate(Date.UTC(...args));
+  // } else {
+  //   return _makeDate(...args);
+  //   //return _makeDate(Date.UTC(...args));
+  // }
+  makeDate(...args);
 });
 
 //deDateify :: Date -> String
