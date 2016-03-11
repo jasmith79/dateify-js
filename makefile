@@ -10,6 +10,7 @@ build: $(MIN) $(TEST)
 
 install:
 	npm install
+	bower install
 
 clean:
 	rm -r dist
