@@ -61,12 +61,19 @@ const DATESTR_REGEX  = new RegExp([
 
 //See what we're dealing with in terms of browser support. Not entirely sure how good the
 //pattern check is, but its the approach Modernizr takes so I'm assuming it works well enough.
-const [DATE_TYPE_SUPPORTED, PATTERN_SUPPORTED] = (() => {
+const [DATE_TYPE_SUPPORTED, PATTERN_SUPPORTED, INPUT_EVENT_SUPPORTED] = (() => {
   let input = document.createElement('input');
   let notDate = 'not-a-date';
   input.setAttribute('type', 'date');
   input.setAttribute('value', notDate);
-  return [input.value !== notDate, 'pattern' in input];
+  let inputEvent;
+  try {
+    input.dispatchEvent(new Event('input'));
+    inputEvent = true;
+  } catch (e) {
+    inputEvent = false;
+  }
+  return [input.value !== notDate, 'pattern' in input, inputEvent];
 })();
 
 /*   Private Functions   */
@@ -101,30 +108,29 @@ const _upgradeInput = ((timeValidator, dateValidator) => {
         //works in IE 8+ and every browser I care about
         console.warn(`Unable to verify function ${_getFnName(fn)} called with input element.`);
       }
-      // switch (true) {
-      //   case (DATE_TYPE_SUPPORTED):
-      //     input.setAttribute('type', type);
-      //     break;
-      //   case (PATTERN_SUPPORTED):
-      //     input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
-      //     break;
-      // }
-      input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
-      input.value = input.DEFAULT;
-      let validfn = type === 'date' ? dateValidator : timeValidator;
+      //right now date type is not supported in phantomjs so the tests all work, but if it starts
+      //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
+      if (DATE_TYPE_SUPPORTED) {
+        input.setAttribute('type', type);
+      } else {
+        input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+        input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+        input.value = input.DEFAULT;
+        let validfn = type === 'date' ? dateValidator : timeValidator;
 
-      input.validate = function(fn) {
-        let ctx = this;
-        ctx.addEventListener('change', wait500((e) => {
-          ctx.valid = false;
-          validfn.call(ctx, fn);
-        }));
-      };
-      input.validate(function(e) {
-        if (!this.value) {
-          this.value = this.DEFAULT;
-        }
-      });
+        input.validate = function(fn) {
+          let ctx = this;
+          ctx.addEventListener('input', wait500((e) => {
+            ctx.valid = false;
+            validfn.call(ctx, fn);
+          }));
+        };
+        input.validate(function(e) {
+          if (!this.value) {
+            this.value = this.DEFAULT;
+          }
+        });
+      }
       return input;
     };
   })

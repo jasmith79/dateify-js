@@ -132,13 +132,21 @@
     var notDate = 'not-a-date';
     input.setAttribute('type', 'date');
     input.setAttribute('value', notDate);
-    return [input.value !== notDate, 'pattern' in input];
+    var inputEvent = void 0;
+    try {
+      input.dispatchEvent(new Event('input'));
+      inputEvent = true;
+    } catch (e) {
+      inputEvent = false;
+    }
+    return [input.value !== notDate, 'pattern' in input, inputEvent];
   }();
 
-  var _ref2 = _slicedToArray(_ref, 2);
+  var _ref2 = _slicedToArray(_ref, 3);
 
   var DATE_TYPE_SUPPORTED = _ref2[0];
   var PATTERN_SUPPORTED = _ref2[1];
+  var INPUT_EVENT_SUPPORTED = _ref2[2];
 
 
   /*   Private Functions   */
@@ -173,30 +181,31 @@
           //works in IE 8+ and every browser I care about
           console.warn('Unable to verify function ' + _getFnName(fn) + ' called with input element.');
         }
-        // switch (true) {
-        //   case (DATE_TYPE_SUPPORTED):
-        //     input.setAttribute('type', type);
-        //     break;
-        //   case (PATTERN_SUPPORTED):
-        //     input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
-        //     break;
-        // }
-        input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
-        input.value = input.DEFAULT;
-        var validfn = type === 'date' ? dateValidator : timeValidator;
+        //right now date type is not supported in phantomjs so the tests all work, but if it starts
+        //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
+        if (DATE_TYPE_SUPPORTED) {
+          input.setAttribute('type', type);
+        } else {
+          (function () {
+            input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+            input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+            input.value = input.DEFAULT;
+            var validfn = type === 'date' ? dateValidator : timeValidator;
 
-        input.validate = function (fn) {
-          var ctx = this;
-          ctx.addEventListener('change', wait500(function (e) {
-            ctx.valid = false;
-            validfn.call(ctx, fn);
-          }));
-        };
-        input.validate(function (e) {
-          if (!this.value) {
-            this.value = this.DEFAULT;
-          }
-        });
+            input.validate = function (fn) {
+              var ctx = this;
+              ctx.addEventListener('input', wait500(function (e) {
+                ctx.valid = false;
+                validfn.call(ctx, fn);
+              }));
+            };
+            input.validate(function (e) {
+              if (!this.value) {
+                this.value = this.DEFAULT;
+              }
+            });
+          })();
+        }
         return input;
       };
     });

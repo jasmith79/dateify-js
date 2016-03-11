@@ -9,6 +9,7 @@
 
 import * as dateify from './dateify.js';
 
+let HTML   = 'undefined' !== typeof HTMLElement;
 let d      = new Date(2014, 0, 1, 10);
 let n      = d.getTime();
 let nplus  = n + (1000 * 60 * 60 * 5);
@@ -58,79 +59,271 @@ describe('toUTCDateString', function() {
 });
 
 /*   Browser tests   */
-if ('undefined' !== typeof HTMLElement) {
-  let change = new Event('change');
+if (HTML) {
+  let inputEvent = new Event('input');
+  let check = dateify.toDateInput();
+  let tcheck = dateify.toTimeInput();
   describe('toDateInput', function() {
     it('should have the correct initial value', function() {
-      let def = dateify.toDateInput();
-      expect(def.value).toBe('yyyy-mm-dd');
+      if (check.getAttribute('type') !== 'date') {
+        let def = dateify.toDateInput();
+        expect(def.value).toBe('yyyy-mm-dd');
+      } else {
+        console.log('Date type supported, skipping default value test');
+        expect(true).toBe(true);
+      }
     });
 
     it('should reset on empty string', function(done) {
-      let def = dateify.toDateInput();
-      def.value = '';
-      def.dispatchEvent(change);
-      setTimeout(() => {
-        expect(def.value).toBe('yyyy-mm-dd');
+      if (check.getAttribute('type') !== 'date') {
+        let def = dateify.toDateInput();
+        def.value = '';
+        def.dispatchEvent(inputEvent);
+        setTimeout(() => {
+          expect(def.value).toBe('yyyy-mm-dd');
+          done();
+        }, 510);
+      } else {
+        console.log('Date type supported, skipping default reset test');
+        expect(true).toBe(true);
         done();
-      }, 510)
+      }
     });
 
     it('should validate dates', function(done) {
-      let input = dateify.toDateInput();
-      let foo = null;
-      input.validate((input) => foo = input.value);
-      input.value = '2014-';
-      input.dispatchEvent(change);
-      setTimeout(() => {
-        expect(foo).toBe('2014-');
-        expect(input.valid).toBe(false);
-        input.value = '2014-01-01';
-        input.dispatchEvent(change);
+      if (check.getAttribute('type') !== 'date') {
+        let input = dateify.toDateInput();
+        let foo = null;
+        input.validate((input) => foo = input.value);
+        input.value = '2014-';
+        input.dispatchEvent(inputEvent);
         setTimeout(() => {
-          expect(input.valid).toBe(true);
           expect(foo).toBe('2014-');
-          done();
+          expect(input.valid).toBe(false);
+          input.value = '2014-01-01';
+          input.dispatchEvent(inputEvent);
+          setTimeout(() => {
+            expect(input.valid).toBe(true);
+            expect(foo).toBe('2014-');
+            done();
+          }, 510);
         }, 510);
-      }, 510)
+      } else {
+        console.log('Date type supported, skipping validation test');
+        expect(true).toBe(true);
+        done();
+      }
     });
   });
 
   describe('toTimeInput', function() {
     let def = dateify.toTimeInput();
     it('should have the correct initial value', function() {
-      expect(def.value).toBe('hh:mm');
+      if (tcheck.getAttribute('type') !== 'time') {
+        expect(def.value).toBe('hh:mm');
+      } else {
+        console.log('Time type supported, skipping default value test');
+        expect(true).toBe(true);
+      }
     });
 
     it('should reset on empty string', function(done) {
-      def.value = 'orsientorsnt';
-      def.value = '';
-      def.dispatchEvent(change);
-      setTimeout(() => {
-        expect(def.value).toBe('hh:mm');
+      if (tcheck.getAttribute('type') !== 'time') {
+        def.value = 'orsientorsnt';
+        def.value = '';
+        def.dispatchEvent(inputEvent);
+        setTimeout(() => {
+          expect(def.value).toBe('hh:mm');
+          done();
+        }, 510);
+      } else {
+        console.log('Time type supported, skipping default reset test');
+        expect(true).toBe(true);
         done();
-      }, 510)
+      }
     });
 
     it('should validate times', function(done) {
-      let input = dateify.toTimeInput(document.createElement('input'));
-      let foo = null;
-      input.validate((input) => foo = input.value);
-      input.value = '10:';
-      input.dispatchEvent(change);
-      setTimeout(() => {
-        expect(foo).toBe('10:');
-        expect(input.valid).toBe(false);
-        input.value = '10:00';
-        input.dispatchEvent(change);
+      if (tcheck.getAttribute('type') !== 'time') {
+        let input = dateify.toTimeInput(document.createElement('input'));
+        let foo = null;
+        input.validate((input) => foo = input.value);
+        input.value = '10:';
+        input.dispatchEvent(inputEvent);
         setTimeout(() => {
-          expect(input.valid).toBe(true);
           expect(foo).toBe('10:');
-          done();
+          expect(input.valid).toBe(false);
+          input.value = '10:00';
+          input.dispatchEvent(inputEvent);
+          setTimeout(() => {
+            expect(input.valid).toBe(true);
+            expect(foo).toBe('10:');
+            done();
+          }, 510);
         }, 510);
-      }, 510)
+      } else {
+        console.log('Time type supported, skipping validation test');
+        expect(true).toBe(true);
+        done();
+      }
+    });
+  });
+
+  describe('toPaperDate', function() {
+    let loaded = Promise.all([new Promise((resolve, reject) => {
+      window.addEventListener('WebComponentsReady', () => {
+        resolve(true);
+      });
+      setTimeout(() => {
+        reject(new Error('Polymer failed to load'));
+      }, 3000);
+    }), new Promise((resolve, reject) => {
+      document.addEventListener('DOMContentLoaded', () => {
+        resolve(true);
+      });
+      setTimeout(() => {
+        reject(new Error('DOM failed to load'));
+      }, 3000);
+    })]);
+    let catcher = (e) => { throw e };
+
+    it('should have the correct initial value', function(done) {
+      loaded.then(() => {
+        if (check.getAttribute('type') !== 'date') {
+          let def = dateify.toPaperDate();
+          expect(def.value).toBe('yyyy-mm-dd');
+          done();
+        } else {
+          console.log('Date type supported, skipping paper default value test');
+          expect(true).toBe(true);
+          done();
+        }
+      }).catch(catcher);
+    });
+
+    it('should reset on empty string', function(done) {
+      loaded.then(() => {
+        if (check.getAttribute('type') !== 'date') {
+          let def = dateify.toPaperDate();
+          def.value = '';
+          def.dispatchEvent(inputEvent);
+          setTimeout(() => {
+            expect(def.value).toBe('yyyy-mm-dd');
+            done();
+          }, 510);
+        } else {
+          console.log('Date type supported, skipping paper default reset test');
+          expect(true).toBe(true);
+          done();
+        }
+      }).catch(catcher);
+    });
+
+    it('should validate dates', function(done) {
+      loaded.then(() => {
+        if (check.getAttribute('type') !== 'date') {
+          let input = dateify.toPaperDate();
+          let foo = null;
+          input.validate((input) => foo = input.value);
+          input.value = '2014-';
+          input.dispatchEvent(inputEvent);
+          setTimeout(() => {
+            expect(foo).toBe('2014-');
+            expect(input.valid).toBe(false);
+            input.value = '2014-01-01';
+            input.dispatchEvent(inputEvent);
+            setTimeout(() => {
+              expect(input.valid).toBe(true);
+              expect(foo).toBe('2014-');
+              done();
+            }, 510);
+          }, 510);
+        } else {
+          console.log('Date type supported, skipping paper validation test');
+          expect(true).toBe(true);
+          done();
+        }
+      }).catch(catcher);
+    });
+  });
+
+  describe('toPaperTime', function() {
+    let loaded = Promise.all([new Promise((resolve, reject) => {
+      window.addEventListener('WebComponentsReady', () => {
+        resolve(true);
+      });
+      setTimeout(() => {
+        reject(new Error('Polymer failed to load'));
+      }, 3000);
+    }), new Promise((resolve, reject) => {
+      document.addEventListener('DOMContentLoaded', () => {
+        resolve(true);
+      });
+      setTimeout(() => {
+        reject(new Error('DOM failed to load'));
+      }, 3000);
+    })]);
+    let catcher = (e) => { throw e };
+
+    it('should have the correct initial value', function(done) {
+      loaded.then(() => {
+        if (tcheck.getAttribute('type') !== 'time') {
+          let def = dateify.toPaperTime();
+          expect(def.value).toBe('hh:mm');
+          done();
+        } else {
+          console.log('Time type supported, skipping paper default value test');
+          expect(true).toBe(true);
+          done();
+        }
+      }).catch(catcher);
+    });
+
+    it('should reset on empty string', function(done) {
+      loaded.then(() => {
+        if (tcheck.getAttribute('type') !== 'time') {
+          let def = dateify.toPaperTime();
+          def.value = '';
+          def.dispatchEvent(inputEvent);
+          setTimeout(() => {
+            expect(def.value).toBe('hh:mm');
+            done();
+          }, 510);
+        } else {
+          console.log('Time type supported, skipping paper default reset test');
+          expect(true).toBe(true);
+          done();
+        }
+      }).catch(catcher);
+    });
+
+    it('should validate times', function(done) {
+      loaded.then(() => {
+        if (tcheck.getAttribute('type') !== 'time') {
+          let input = dateify.toPaperTime();
+          let foo = null;
+          input.validate((input) => foo = input.value);
+          input.value = '10:';
+          input.dispatchEvent(inputEvent);
+          setTimeout(() => {
+            expect(foo).toBe('10:');
+            expect(input.valid).toBe(false);
+            input.value = '10:00';
+            input.dispatchEvent(inputEvent);
+            setTimeout(() => {
+              expect(input.valid).toBe(true);
+              expect(foo).toBe('10:');
+              done();
+            }, 510);
+          }, 510);
+        } else {
+          console.log('Time type supported, skipping paper validation test');
+          expect(true).toBe(true);
+          done();
+        }
+      }).catch(catcher);
     });
   });
 } else {
-  console.log('Skipping HTMLElement tests');
+  console.log('Skipping HTMLElement/Polymer tests...');
 }
