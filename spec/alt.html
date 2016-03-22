@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Inputs</title>
+  <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../bower_components/paper-input/paper-input.html">
+  <script src="../node_modules/decorators-js/dist/decorators.js"></script>
+  <script src="../dist/dateify.js"></script>
+</head>
+<body>
+<template is="dom-bind" id="yo">
+  <paper-input id="foo" label="Imma Date"></paper-input>
+  <!-- <script>
+    //dateify.toPaperDate(document.getElementById('foo'));
+    document.getElementById('foo').setAttribute('type', 'date');
+  </script> -->
+</template>
+<!-- <paper-input id="foo" label="Imma Date"></paper-input> -->
+<input id="bar">
+<script>
+  document.getElementById('yo').addEventListener('dom-change', function() {
+    console.log('dom-change');
+    dateify.toPaperDate(document.getElementById('foo'));
+    //document.getElementById('foo').setAttribute('type', 'date');
+    document.getElementById('foo').value = dateify.deDateify(new Date());
+    setTimeout(function() { document.getElementById('foo').value = ''; }, 1000);
+  });
+  //dateify.toPaperDate(document.getElementById('foo'));
+  dateify.toDateInput(document.getElementById('bar'));
+</script>
+</body>
+</html>
