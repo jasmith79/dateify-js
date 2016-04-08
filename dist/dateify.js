@@ -16,7 +16,7 @@
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.toUTCDateString = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
+  exports.order = exports.destructure = exports.toUTCDateString = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
 
   var d = _interopRequireWildcard(_decorators);
 
@@ -87,18 +87,6 @@
     };
   }();
 
-  //remove this stub later
-  // let document = document || {
-  //   createElement: function(){
-  //     return {
-  //       setAttribute: function(k, v) {
-  //         this[k] = v;
-  //       },
-  //       pattern: true
-  //     }
-  //   }
-  // };
-
   /*   Constants   */
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];;
 
@@ -115,7 +103,6 @@
   var TIME_DEFAULT = 'hh:mm';
   var IS_INPUT = /input/i;
   var FN_NAME_REGEX = /^\s*function\s*(\S*)\s*\(/;
-  var MERIDIAN = /[ap]m/i;
 
   //matches Date::toString() and Date::toDateString()
   var DATESTR_REGEX = new RegExp([/[A-Z][a-z]{2} [A-Z][a-z]{2} [0-3][0-9] [0-9]{4}/, //date
@@ -126,28 +113,27 @@
 
   //See what we're dealing with in terms of browser support. Not entirely sure how good the
   //pattern check is, but its the approach Modernizr takes so I'm assuming it works well enough.
-
-  var _ref = function () {
+  // const [DATE_TYPE_SUPPORTED, PATTERN_SUPPORTED, INPUT_EVENT_SUPPORTED] = (() => {
+  //   let input = document.createElement('input');
+  //   let notDate = 'not-a-date';
+  //   input.setAttribute('type', 'date');
+  //   input.setAttribute('value', notDate);
+  //   let inputEvent;
+  //   try {
+  //     input.dispatchEvent(new Event('input'));
+  //     inputEvent = true;
+  //   } catch (e) {
+  //     inputEvent = false;
+  //   }
+  //   return [input.value !== notDate, 'pattern' in input, inputEvent];
+  // })();
+  var DATE_TYPE_SUPPORTED = function () {
     var input = document.createElement('input');
     var notDate = 'not-a-date';
     input.setAttribute('type', 'date');
     input.setAttribute('value', notDate);
-    var inputEvent = void 0;
-    try {
-      input.dispatchEvent(new Event('input'));
-      inputEvent = true;
-    } catch (e) {
-      inputEvent = false;
-    }
-    return [input.value !== notDate, 'pattern' in input, inputEvent];
+    return input.value !== notDate;
   }();
-
-  var _ref2 = _slicedToArray(_ref, 3);
-
-  var DATE_TYPE_SUPPORTED = _ref2[0];
-  var PATTERN_SUPPORTED = _ref2[1];
-  var INPUT_EVENT_SUPPORTED = _ref2[2];
-
 
   /*   Private Functions   */
   //type checks
@@ -227,10 +213,10 @@
     }
   });
 
-  //_parseDate :: Date -> [Number]
-  var _parseDate = _takesDate(function (date) {
+  //destructure :: Date -> [Number]
+  var destructure = _takesDate(function (date) {
     return [date.getFullYear(), date.getMonth(), //no +1
-    date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), date.getTimezoneOffset()];
+    date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()];
   });
 
   /*   Public Functions   */
@@ -270,15 +256,15 @@
         day = +dy;
         yr = +year;
 
-        var _ref3 = time ? time.split(':').map(function (x) {
+        var _ref = time ? time.split(':').map(function (x) {
           return +x;
         }) : [0, 0, 0];
 
-        var _ref4 = _slicedToArray(_ref3, 3);
+        var _ref2 = _slicedToArray(_ref, 3);
 
-        hr = _ref4[0];
-        min = _ref4[1];
-        sec = _ref4[2];
+        hr = _ref2[0];
+        min = _ref2[1];
+        sec = _ref2[2];
 
         tzOff = timezone ? timezone.match(/[A-Z]{3}([-+][0-9]{4})/)[1] : null;
         break;
@@ -333,12 +319,12 @@
       var sign = t[0] === '+' ? t[0] : '-';
       var rest = t.slice(1);
 
-      var _ref5 = rest.indexOf(':') === -1 ? [rest.slice(0, 2), rest.slice(2, 4)] : rest.split(':');
+      var _ref3 = rest.indexOf(':') === -1 ? [rest.slice(0, 2), rest.slice(2, 4)] : rest.split(':');
 
-      var _ref6 = _slicedToArray(_ref5, 2);
+      var _ref4 = _slicedToArray(_ref3, 2);
 
-      var hour = _ref6[0];
-      var min = _ref6[1];
+      var hour = _ref4[0];
+      var min = _ref4[1];
 
       return +(sign + hour) * 60 + +(sign + min); //IDKWTF js does tzoffsets in *minutes*
     }(tzOff) : 0;
@@ -382,6 +368,18 @@
     return str + ('T' + _padInt(date.getHours()) + ':' + _padInt(date.getMinutes()) + ':' + _padInt(date.getSeconds()) + 'Z');
   });
 
+  //order :: [Date] -> [Date]
+  //Returns an array of the passed-in Date objects in ascending chronological order.
+  var order = d.unGather(function () {
+    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    return args.sort(function (a, b) {
+      return a.getTime() - b.getTime();
+    });
+  });
+
   exports.toDateInput = toDateInput;
   exports.toTimeInput = toTimeInput;
   exports.toPaperDate = toPaperDate;
@@ -390,4 +388,6 @@
   exports.deDateify = deDateify;
   exports.isLeapYear = isLeapYear;
   exports.toUTCDateString = toUTCDateString;
+  exports.destructure = destructure;
+  exports.order = order;
 });

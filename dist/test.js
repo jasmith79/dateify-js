@@ -32,15 +32,45 @@
     }
   }
 
-  var HTML = 'undefined' !== typeof HTMLElement; /*
-                                                  *Dateify-js tests
-                                                  *@author jasmith79@gmail.com
-                                                  *@copyright Jared Adam Smith, 2016
-                                                  *Licensed under the MIT license. You should have received a copy with this software, otherwise see
-                                                  *https://opensource.org/licenses/MIT.
-                                                  *
-                                                  */
+  var _slicedToArray = function () {
+    function sliceIterator(arr, i) {
+      var _arr = [];
+      var _n = true;
+      var _d = false;
+      var _e = undefined;
 
+      try {
+        for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+          _arr.push(_s.value);
+
+          if (i && _arr.length === i) break;
+        }
+      } catch (err) {
+        _d = true;
+        _e = err;
+      } finally {
+        try {
+          if (!_n && _i["return"]) _i["return"]();
+        } finally {
+          if (_d) throw _e;
+        }
+      }
+
+      return _arr;
+    }
+
+    return function (arr, i) {
+      if (Array.isArray(arr)) {
+        return arr;
+      } else if (Symbol.iterator in Object(arr)) {
+        return sliceIterator(arr, i);
+      } else {
+        throw new TypeError("Invalid attempt to destructure non-iterable instance");
+      }
+    };
+  }();
+
+  var HTML = 'undefined' !== typeof HTMLElement;
   var d = new Date(2014, 0, 1, 10);
   var n = d.getTime();
   var nplus = n + 1000 * 60 * 60 * 5;
@@ -90,6 +120,39 @@
     it('should return a ISO-formatted UTC string', function () {
       var str = dateify.toUTCDateString(d);
       expect(str).toBe('2014-01-01T15:00:00Z');
+    });
+  });
+
+  describe('order', function () {
+    var arr = [new Date(2014, 2, 1), new Date(2014, 0, 1), new Date(2014, 1, 1)];
+    it('should order n Date objects in ascending chronological order', function () {
+      var sorted = dateify.order.apply(dateify, arr);
+      expect(sorted[0].getMonth()).toBe(0);
+      expect(sorted[2].getMonth()).toBe(2);
+    });
+
+    it('should also work on arrays of Date objects', function () {
+      var sorted = dateify.order(arr);
+      expect(sorted[0].getMonth()).toBe(0);
+      expect(sorted[2].getMonth()).toBe(2);
+    });
+  });
+
+  describe('destructure', function () {
+    it('performs inverse operation of Date constructor: turns a Date object into #s', function () {
+      var _dateify$destructure = dateify.destructure(d);
+
+      var _dateify$destructure2 = _slicedToArray(_dateify$destructure, 4);
+
+      var yr = _dateify$destructure2[0];
+      var mon = _dateify$destructure2[1];
+      var day = _dateify$destructure2[2];
+      var hr = _dateify$destructure2[3];
+
+      expect(yr).toBe(2014);
+      expect(mon).toBe(0);
+      expect(day).toBe(1);
+      expect(hr).toBe(10);
     });
   });
 
@@ -215,7 +278,7 @@
         });
       });
 
-      describe('Polymer date tests', function () {
+      describe('toPaperDate', function () {
         var loaded = Promise.all([new Promise(function (resolve, reject) {
           window.addEventListener('WebComponentsReady', function () {
             resolve(true);
@@ -301,7 +364,7 @@
         });
       });
 
-      describe('Polymer time tests', function () {
+      describe('toPaperTime', function () {
         var loaded = Promise.all([new Promise(function (resolve, reject) {
           window.addEventListener('WebComponentsReady', function () {
             resolve(true);

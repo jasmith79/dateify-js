@@ -10,18 +10,6 @@
 /*   Imports   */
 import * as d from '../node_modules/decorators-js/dist/decorators.js';
 
-//remove this stub later
-// let document = document || {
-//   createElement: function(){
-//     return {
-//       setAttribute: function(k, v) {
-//         this[k] = v;
-//       },
-//       pattern: true
-//     }
-//   }
-// };
-
 /*   Constants   */
 const MONTHS = [
   'Jan',
@@ -51,29 +39,35 @@ const DATE_DEFAULT   = 'yyyy-mm-dd';
 const TIME_DEFAULT   = 'hh:mm';
 const IS_INPUT       = /input/i;
 const FN_NAME_REGEX  = /^\s*function\s*(\S*)\s*\(/;
-const MERIDIAN       = /[ap]m/i;
 
 //matches Date::toString() and Date::toDateString()
 const DATESTR_REGEX  = new RegExp([
-  /[A-Z][a-z]{2} [A-Z][a-z]{2} [0-3][0-9] [0-9]{4}/,                  //date
+  /[A-Z][a-z]{2} [A-Z][a-z]{2} [0-3][0-9] [0-9]{4}/,                          //date
   /(?: [0-9]{2}:[0-9]{2}:[0-9]{2} GMT[-+][0-2][0-9][0-5][0-9] \([A-Z]{3}\))?/ //time
 ].map(r => r.source).join(''), 'g');
 
 //See what we're dealing with in terms of browser support. Not entirely sure how good the
 //pattern check is, but its the approach Modernizr takes so I'm assuming it works well enough.
-const [DATE_TYPE_SUPPORTED, PATTERN_SUPPORTED, INPUT_EVENT_SUPPORTED] = (() => {
+// const [DATE_TYPE_SUPPORTED, PATTERN_SUPPORTED, INPUT_EVENT_SUPPORTED] = (() => {
+//   let input = document.createElement('input');
+//   let notDate = 'not-a-date';
+//   input.setAttribute('type', 'date');
+//   input.setAttribute('value', notDate);
+//   let inputEvent;
+//   try {
+//     input.dispatchEvent(new Event('input'));
+//     inputEvent = true;
+//   } catch (e) {
+//     inputEvent = false;
+//   }
+//   return [input.value !== notDate, 'pattern' in input, inputEvent];
+// })();
+const DATE_TYPE_SUPPORTED = (() => {
   let input = document.createElement('input');
   let notDate = 'not-a-date';
   input.setAttribute('type', 'date');
   input.setAttribute('value', notDate);
-  let inputEvent;
-  try {
-    input.dispatchEvent(new Event('input'));
-    inputEvent = true;
-  } catch (e) {
-    inputEvent = false;
-  }
-  return [input.value !== notDate, 'pattern' in input, inputEvent];
+  return input.value !== notDate;
 })();
 
 /*   Private Functions   */
@@ -152,8 +146,8 @@ const _upgradeInput = ((timeValidator, dateValidator) => {
   }
 });
 
-//_parseDate :: Date -> [Number]
-const _parseDate = _takesDate((date) => {
+//destructure :: Date -> [Number]
+const destructure = _takesDate((date) => {
   return [
     date.getFullYear(),
     date.getMonth(), //no +1
@@ -161,7 +155,6 @@ const _parseDate = _takesDate((date) => {
     date.getHours(),
     date.getMinutes(),
     date.getSeconds(),
-    date.getTimezoneOffset()
   ];
 });
 
@@ -269,6 +262,10 @@ const toUTCDateString = _dateOrString(day => {
     `T${_padInt(date.getHours())}:${_padInt(date.getMinutes())}:${_padInt(date.getSeconds())}Z`;
 });
 
+//order :: [Date] -> [Date]
+//Returns an array of the passed-in Date objects in ascending chronological order.
+const order = d.unGather((...args) => args.sort((a, b) => a.getTime() - b.getTime()));
+
 export {
   toDateInput,
   toTimeInput,
@@ -278,4 +275,6 @@ export {
   deDateify,
   isLeapYear,
   toUTCDateString,
+  destructure,
+  order,
 };

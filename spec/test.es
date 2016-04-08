@@ -58,6 +58,31 @@ describe('toUTCDateString', function() {
   });
 });
 
+describe('order', function() {
+  let arr = [new Date(2014, 2, 1), new Date(2014, 0, 1), new Date(2014, 1, 1)];
+  it('should order n Date objects in ascending chronological order', function() {
+    let sorted = dateify.order(...arr);
+    expect(sorted[0].getMonth()).toBe(0);
+    expect(sorted[2].getMonth()).toBe(2);
+  });
+
+  it('should also work on arrays of Date objects', function() {
+    let sorted = dateify.order(arr);
+    expect(sorted[0].getMonth()).toBe(0);
+    expect(sorted[2].getMonth()).toBe(2);
+  });
+});
+
+describe('destructure', function() {
+  it('performs inverse operation of Date constructor: turns a Date object into #s', function() {
+    let [yr, mon, day, hr] = dateify.destructure(d);
+    expect(yr).toBe(2014);
+    expect(mon).toBe(0);
+    expect(day).toBe(1);
+    expect(hr).toBe(10);
+  });
+});
+
 /*   Browser tests   */
 if (HTML) {
   let inputEvent = new Event('input');
