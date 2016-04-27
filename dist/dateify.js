@@ -88,12 +88,12 @@
   }();
 
   /*   Constants   */
-  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];;
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   //none of the regexs are foolproof, but good enough for a quick and dirty check
 
   //ISO 8601
-  var VALID_DATE = /[0-9]{4}-[0-1][0-9]-[0-3][0-9]/;
+  var VALID_DATE = /(?:[0-9]{4}[-\/][0-1][0-9][-\/][0-3][0-9])|(?:[0-1][0-9][-\/][0-3][0-9][-\/][0-9]{4})/;
   var VALID_TIME = /[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?[+-Z]?(?:[0-2][0-9]:[0-5][0-9])?/;
 
   //ISO-conforming defaults
@@ -127,6 +127,7 @@
   //   }
   //   return [input.value !== notDate, 'pattern' in input, inputEvent];
   // })();
+
   var DATE_TYPE_SUPPORTED = function () {
     var input = document.createElement('input');
     var notDate = 'not-a-date';
@@ -213,10 +214,35 @@
     }
   });
 
-  //destructure :: Date -> [Number]
-  var destructure = _takesDate(function (date) {
+  //destructureDate :: Date -> [Number]
+  var destructureDate = _takesDate(function (date) {
     return [date.getFullYear(), date.getMonth(), //no +1
     date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()];
+  });
+
+  //destructureDateString :: String -> [Number]
+  var destructureDateString = _takesString(function (str) {
+    var splitter = str.indexOf('-') >= 0 ? '-' : '/';
+
+    var _str$split$map = str.split(splitter).map(function (x) {
+      return +x;
+    });
+
+    var _str$split$map2 = _slicedToArray(_str$split$map, 3);
+
+    var first = _str$split$map2[0];
+    var second = _str$split$map2[1];
+    var third = _str$split$map2[2];
+
+    var _ref = first > 11 || third < 32 ? [first, second, third] : [third, second, first];
+
+    var _ref2 = _slicedToArray(_ref, 3);
+
+    var yr = _ref2[0];
+    var mn = _ref2[1];
+    var day = _ref2[2];
+
+    return [yr, mn, day];
   });
 
   /*   Public Functions   */
@@ -256,30 +282,28 @@
         day = +dy;
         yr = +year;
 
-        var _ref = time ? time.split(':').map(function (x) {
+        var _ref3 = time ? time.split(':').map(function (x) {
           return +x;
         }) : [0, 0, 0];
 
-        var _ref2 = _slicedToArray(_ref, 3);
+        var _ref4 = _slicedToArray(_ref3, 3);
 
-        hr = _ref2[0];
-        min = _ref2[1];
-        sec = _ref2[2];
+        hr = _ref4[0];
+        min = _ref4[1];
+        sec = _ref4[2];
 
         tzOff = timezone ? timezone.match(/[A-Z]{3}([-+][0-9]{4})/)[1] : null;
         break;
       case !(ISOdate && ISOtime):
         var datepart = ISOdate[0];
 
-        var _datepart$split$map = datepart.split('-').map(function (x) {
-          return +x;
-        });
+        var _destructureDateStrin = destructureDateString(datepart);
 
-        var _datepart$split$map2 = _slicedToArray(_datepart$split$map, 3);
+        var _destructureDateStrin2 = _slicedToArray(_destructureDateStrin, 3);
 
-        yr = _datepart$split$map2[0];
-        mon = _datepart$split$map2[1];
-        day = _datepart$split$map2[2];
+        yr = _destructureDateStrin2[0];
+        mon = _destructureDateStrin2[1];
+        day = _destructureDateStrin2[2];
 
         var _ISOtime$0$match$0$sp = ISOtime[0].match(/[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?/)[0].split(':').map(function (x) {
           return +x;
@@ -295,20 +319,18 @@
         mon -= 1;
         break;
       case !ISOdate:
-        var _ISOdate$0$split$map = ISOdate[0].split('-').map(function (x) {
-          return +x;
-        });
+        var _destructureDateStrin3 = destructureDateString(ISOdate[0]);
 
-        var _ISOdate$0$split$map2 = _slicedToArray(_ISOdate$0$split$map, 3);
+        var _destructureDateStrin4 = _slicedToArray(_destructureDateStrin3, 3);
 
-        yr = _ISOdate$0$split$map2[0];
-        mon = _ISOdate$0$split$map2[1];
-        day = _ISOdate$0$split$map2[2];
+        yr = _destructureDateStrin4[0];
+        mon = _destructureDateStrin4[1];
+        day = _destructureDateStrin4[2];
 
         mon -= 1;
         break;
       default:
-        throw new Error('Datestring ' + datestr + ' format not recognized');
+        throw new Error('Datestring ' + datestr + ': format not recognized');
         break;
     }
     var tempD = _makeDate.apply(undefined, _toConsumableArray([yr, mon, day, hr, min, sec].map(function (x) {
@@ -319,12 +341,12 @@
       var sign = t[0] === '+' ? t[0] : '-';
       var rest = t.slice(1);
 
-      var _ref3 = rest.indexOf(':') === -1 ? [rest.slice(0, 2), rest.slice(2, 4)] : rest.split(':');
+      var _ref5 = rest.indexOf(':') === -1 ? [rest.slice(0, 2), rest.slice(2, 4)] : rest.split(':');
 
-      var _ref4 = _slicedToArray(_ref3, 2);
+      var _ref6 = _slicedToArray(_ref5, 2);
 
-      var hour = _ref4[0];
-      var min = _ref4[1];
+      var hour = _ref6[0];
+      var min = _ref6[1];
 
       return +(sign + hour) * 60 + +(sign + min); //IDKWTF js does tzoffsets in *minutes*
     }(tzOff) : 0;
@@ -388,6 +410,6 @@
   exports.deDateify = deDateify;
   exports.isLeapYear = isLeapYear;
   exports.toUTCDateString = toUTCDateString;
-  exports.destructure = destructure;
+  exports.destructure = destructureDate;
   exports.order = order;
 });

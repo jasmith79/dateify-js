@@ -24,13 +24,13 @@ const MONTHS = [
   'Oct',
   'Nov',
   'Dec'
-];;
+];
 
 //none of the regexs are foolproof, but good enough for a quick and dirty check
 
 //ISO 8601
-const VALID_DATE     = /[0-9]{4}-[0-1][0-9]-[0-3][0-9]/;
-const VALID_TIME     = /[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?[+-Z]?(?:[0-2][0-9]:[0-5][0-9])?/;
+const VALID_DATE = /(?:[0-9]{4}[-\/][0-1][0-9][-\/][0-3][0-9])|(?:[0-1][0-9][-\/][0-3][0-9][-\/][0-9]{4})/;
+const VALID_TIME = /[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?[+-Z]?(?:[0-2][0-9]:[0-5][0-9])?/;
 
 //ISO-conforming defaults
 const DATE_DEF_REGEX = /^y{1,4}-?m{0,2}-?d{0,2}/i;
@@ -62,6 +62,7 @@ const DATESTR_REGEX  = new RegExp([
 //   }
 //   return [input.value !== notDate, 'pattern' in input, inputEvent];
 // })();
+
 const DATE_TYPE_SUPPORTED = (() => {
   let input = document.createElement('input');
   let notDate = 'not-a-date';
@@ -81,7 +82,7 @@ const _takesNum     = d.typeGuard('number');
 //Has IE workaround for lack of function name property on Functions
 //_getFnName :: (* -> *) -> String
 const _getFnName = _takesFn(fn => {
-  return fn.name || ((('' + fn).match(FN_NAME_REGEX) || [])[1] || 'Anonymous')
+  return fn.name || ((('' + fn).match(FN_NAME_REGEX) || [])[1] || 'Anonymous');
 });
 
 //padInt :: Number -> String
@@ -100,7 +101,7 @@ const _upgradeInput = ((timeValidator, dateValidator) => {
       let input = el || document.createElement(tag);
       if (!input.tagName.match(IS_INPUT)) {
         //works in IE 8+ and every browser I care about
-        console.warn(`Unable to verify function ${_getFnName(fn)} called with input element.`);
+        console.warn(`Unable to verify function ${_getFnName(fn)} called with input element.`)
       }
       //right now date type is not supported in phantomjs so the tests all work, but if it starts
       //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
@@ -146,8 +147,8 @@ const _upgradeInput = ((timeValidator, dateValidator) => {
   }
 });
 
-//destructure :: Date -> [Number]
-const destructure = _takesDate((date) => {
+//destructureDate :: Date -> [Number]
+const destructureDate = _takesDate((date) => {
   return [
     date.getFullYear(),
     date.getMonth(), //no +1
@@ -156,6 +157,14 @@ const destructure = _takesDate((date) => {
     date.getMinutes(),
     date.getSeconds(),
   ];
+});
+
+//destructureDateString :: String -> [Number]
+const destructureDateString = _takesString((str) => {
+  let splitter = str.indexOf('-') >= 0 ? '-' : '/';
+  let [first, second, third] = str.split(splitter).map(x => +x);
+  let [yr, mn, day] = first > 11 || third < 32 ? [first, second, third] : [third, second, first];
+  return [yr, mn, day];
 });
 
 /*   Public Functions   */
@@ -190,7 +199,7 @@ const dateify = _takesString(str => {
       break;
     case (!(ISOdate && ISOtime)):
       let datepart   = ISOdate[0];
-      [yr, mon, day] = datepart.split('-').map(x => +x);
+      [yr, mon, day] = destructureDateString(datepart);
       [hr, min, sec] = ISOtime[0]
         .match(/[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?/)[0]
         .split(':')
@@ -199,11 +208,11 @@ const dateify = _takesString(str => {
       mon -= 1;
       break;
     case (!ISOdate):
-      [yr, mon, day] = ISOdate[0].split('-').map(x => +x);
+      [yr, mon, day] = destructureDateString(ISOdate[0]);
       mon -= 1;
       break;
     default:
-      throw new Error(`Datestring ${datestr} format not recognized`);
+      throw new Error(`Datestring ${datestr}: format not recognized`);
       break;
   }
   let tempD = _makeDate(...[yr, mon, day, hr, min, sec].map(x => x || 0));
@@ -275,6 +284,6 @@ export {
   deDateify,
   isLeapYear,
   toUTCDateString,
-  destructure,
+  destructureDate as destructure,
   order,
 };
