@@ -1,16 +1,16 @@
 (function (global, factory) {
   if (typeof define === "function" && define.amd) {
-    define(['exports', '../node_modules/decorators-js/dist/decorators.js'], factory);
+    define(['exports', 'decorators-js', 'js-typed'], factory);
   } else if (typeof exports !== "undefined") {
-    factory(exports, require('../node_modules/decorators-js/dist/decorators.js'));
+    factory(exports, require('decorators-js'), require('js-typed'));
   } else {
     var mod = {
       exports: {}
     };
-    factory(mod.exports, global.decorators);
+    factory(mod.exports, global.decoratorsJs, global.jsTyped);
     global.dateify = mod.exports;
   }
-})(this, function (exports, _decorators) {
+})(this, function (exports, _decoratorsJs, _jsTyped) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -18,7 +18,9 @@
   });
   exports.order = exports.destructure = exports.toUTCDateString = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
 
-  var d = _interopRequireWildcard(_decorators);
+  var d = _interopRequireWildcard(_decoratorsJs);
+
+  var typed = _interopRequireWildcard(_jsTyped);
 
   function _interopRequireWildcard(obj) {
     if (obj && obj.__esModule) {
@@ -138,101 +140,248 @@
 
   /*   Private Functions   */
   //type checks
-  var _takesString = d.typeGuard('string');
-  var _takesDate = d.typeGuard(Date);
-  var _dateOrString = d.typeGuard(['string', Date]);
-  var _takesFn = d.typeGuard('function');
-  var _takesNum = d.typeGuard('number');
+  // const _takesString  = d.typeGuard('string');
+  // const _takesDate    = d.typeGuard(Date);
+  // const _dateOrString = d.typeGuard(['string', Date]);
+  // const _takesFn      = d.typeGuard('function');
+  // const _takesNum     = d.typeGuard('number');
 
   //Has IE workaround for lack of function name property on Functions
   //_getFnName :: (* -> *) -> String
-  var _getFnName = _takesFn(function (fn) {
+  var _getFnName = typed.guard('function', function (fn) {
     return fn.name || (('' + fn).match(FN_NAME_REGEX) || [])[1] || 'Anonymous';
   });
 
-  //padInt :: Number -> String
+  // padInt :: Number -> String
   var _padInt = d.padInt(2);
 
   //_makeDate :: Number -> Date
-  var _makeDate = d.unNew(0, Date);
+  // const _makeDate = d.unNew(0, Date);
+  var _Date = typed.guardClass(0, Date);
+  typed.defType('__Array<Number>', function (arr) {
+    return typed.isType('array', arr) && arr.every(function (x) {
+      return !Number.isNaN(+x);
+    });
+  });
 
   var wait500 = d.debounce(500);
 
-  //_upgradeInput :: String, String -> (HTMLElement -> HTMLElement)
-  //_upgradeInput :: String, String -> (Null -> HTMLElement)
-  var _upgradeInput = function (timeValidator, dateValidator) {
-    return _takesString(function (tag, type) {
-      return function (el) {
-        var input = el || document.createElement(tag);
-        if (!input.tagName.match(IS_INPUT)) {
-          //works in IE 8+ and every browser I care about
-          console.warn('Unable to verify function ' + _getFnName(fn) + ' called with input element.');
-        }
-        //right now date type is not supported in phantomjs so the tests all work, but if it starts
-        //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
-        if (DATE_TYPE_SUPPORTED) {
-          input.setAttribute('type', type);
-        } else {
-          (function () {
-            input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
-            input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
-            input.value = input.DEFAULT;
-            var validfn = type === 'date' ? dateValidator : timeValidator;
-
-            input.validate = function (fn) {
-              var ctx = this;
-              ctx.addEventListener('input', wait500(function (e) {
-                ctx.valid = false;
-                validfn.call(ctx, fn);
-              }));
-            };
-            input.validate(function (e) {
-              if (!this.value) {
-                this.value = this.DEFAULT;
-              }
-            });
-          })();
-        }
-        return input;
-      };
-    });
-  }(function (fn) {
-    var def = this.value.match(TIME_DEF_REGEX);
-    var valid = def || this.value.match(VALID_TIME);
-    if (!valid) {
-      fn.call(this, this);
-    } else {
-      this.valid = true;
-    }
-  }, function (fn) {
-    var def = this.value.match(DATE_DEF_REGEX);
-    var valid = def || this.value.match(VALID_DATE);
-    if (!valid) {
-      fn.call(this, this);
-    } else {
-      this.valid = true;
-    }
+  typed.defType('__dateString', function (s) {
+    return typed.isType('string', s) && s.match(DATESTR_REGEX);
   });
+  typed.defType('__isoDateString', function (s) {
+    return typed.isType('string', s) && s.match(VALID_DATE);
+  });
+
+  // typed.defType('__inputTagName', s => s.match(/input/i));
+  // typed.defType(
+  //   '__HTMLElement',
+  //   el => el && el.constructor && el.constructor.name.match(/HTML.*Element/)
+  // );
+  // const _makeTag = typed.Dispatcher([
+  //   typed.guard('__inputTagName', s => document.createElement(s)),
+  //   typed.guard('__HTMLElement', el => el)
+  // ]);
+
+  var _upgradeInput = typed.guard(function (type, input) {
+
+    //right now date type is not supported in phantomjs so the tests all work, but if it starts
+    //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
+    if (DATE_TYPE_SUPPORTED) {
+      input.setAttribute('type', type);
+    } else {
+      (function () {
+        input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+        input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+        input.value = input.DEFAULT;
+        var validfn = type === 'date' ? dateValidator : timeValidator;
+
+        input.validate = function (fn) {
+          var ctx = this;
+          ctx.addEventListener('input', wait500(function (e) {
+            ctx.valid = false;
+            validfn.call(ctx, fn);
+          }));
+        };
+        input.validate(function (e) {
+          if (!this.value) {
+            this.value = this.DEFAULT;
+          }
+        });
+      })();
+    }
+    return input;
+  });
+
+  var _defaultTag = function _defaultTag(tag) {
+    return function (el) {
+      return el || document.createElement(tag);
+    };
+  };
+  var _ensureInput = _defaultTag('input');
+  var _ensurePaper = _defaultTag('paper-input');
+  var _upDate = _upgradeInput('date');
+  var _upTime = _upgradeInput('time');
+  var toDateInput = function toDateInput(arg) {
+    return _upDate(_ensureInput(arg));
+  };
+  var toTimeInput = function toTimeInput(arg) {
+    return _upTime(_ensureInput(arg));
+  };
+  var toPaperDate = function toPaperDate(arg) {
+    return _upDate(_ensurePaper(arg));
+  };
+  var toPaperTime = function toPaperTime(arg) {
+    return _upTime(_ensurePaper(arg));
+  };
+
+  // //_upgradeInput :: String, String -> (HTMLElement -> HTMLElement)
+  // //_upgradeInput :: String, String -> (Null -> HTMLElement)
+  // const _upgradeInput = ((timeValidator, dateValidator) => {
+  //   return _takesString((tag, type) => {
+  //     return el => {
+  //       let input = el || document.createElement(tag);
+  //       if (!input.tagName.match(IS_INPUT)) {
+  //         //works in IE 8+ and every browser I care about
+  //         console.warn(`Unable to verify function ${_getFnName(fn)} called with input element.`)
+  //       }
+  //       //right now date type is not supported in phantomjs so the tests all work, but if it starts
+  //       //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
+  //       if (DATE_TYPE_SUPPORTED) {
+  //         input.setAttribute('type', type);
+  //       } else {
+  //         input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+  //         input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+  //         input.value = input.DEFAULT;
+  //         let validfn = type === 'date' ? dateValidator : timeValidator;
+  //
+  //         input.validate = function(fn) {
+  //           let ctx = this;
+  //           ctx.addEventListener('input', wait500((e) => {
+  //             ctx.valid = false;
+  //             validfn.call(ctx, fn);
+  //           }));
+  //         };
+  //         input.validate(function(e) {
+  //           if (!this.value) {
+  //             this.value = this.DEFAULT;
+  //           }
+  //         });
+  //       }
+  //       return input;
+  //     };
+  //   })
+  // })(function(fn) {
+  //   let def = this.value.match(TIME_DEF_REGEX);
+  //   let valid = def || this.value.match(VALID_TIME);
+  //   if (!valid) {
+  //     fn.call(this, this);
+  //   } else {
+  //     this.valid = true;
+  //   }
+  // }, function(fn) {
+  //   let def = this.value.match(DATE_DEF_REGEX);
+  //   let valid = def || this.value.match(VALID_DATE);
+  //   if (!valid) {
+  //     fn.call(this, this);
+  //   } else {
+  //     this.valid = true;
+  //   }
+  // });
 
   //destructureDate :: Date -> [Number]
-  var destructureDate = _takesDate(function (date) {
-    return [date.getFullYear(), date.getMonth(), //no +1
-    date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()];
-  });
+  // const destructureDate = typed.guard('date', date => {
+  //   return [
+  //     date.getFullYear(),
+  //     date.getMonth(), //no +1
+  //     date.getDate(),
+  //     date.getHours(),
+  //     date.getMinutes(),
+  //     date.getSeconds(),
+  //   ];
+  // });
 
   //destructureDateString :: String -> [Number]
-  var destructureDateString = _takesString(function (str) {
-    var splitter = str.indexOf('-') >= 0 ? '-' : '/';
+  // const destructureDateString = typed.guard('__isoDateString', str => {
+  //   let splitter = str.indexOf('-') >= 0 ? '-' : '/';
+  //   let [first, second, third] = str.split(splitter).map(x => +x);
+  //   let [yr, mn, day] = first > 11 || third < 32 ? [first, second, third] : [third, second, first];
+  //   return [yr, mn, day];
+  // });
 
-    var _str$split$map = str.split(splitter).map(function (x) {
+  /*   Public Functions   */
+
+  //* :: HTMLElement -> HTMLElement
+  // const toDateInput = _upgradeInput('input', 'date');
+  // const toTimeInput = _upgradeInput('input', 'time');
+  // const toPaperDate = _upgradeInput('paper-input', 'date');
+  // const toPaperTime = _upgradeInput('paper-input', 'time');
+
+  //dateify :: String -> Date
+  var extractDateParts = typed.Dispatcher([typed.guard('__isoDateString', function (str) {
+    var timeSplitter = str.indexOf('T') === -1 ? ' ' : 'T';
+    var dateSplitter = str.indexOf('-') >= 0 ? '-' : '/';
+
+    var _str$split = str.split(timeSplitter);
+
+    var _str$split2 = _slicedToArray(_str$split, 2);
+
+    var date = _str$split2[0];
+    var time = _str$split2[1];
+
+    var hr = void 0,
+        min = void 0,
+        sec = void 0,
+        hasTZ = void 0;
+    if (time) {
+      var hasZ = time.indexOf('Z') !== -1;
+      hasTZ = time.match(/[-+][01][0-9]:[0-5][0-9]/);
+      if (hasZ && hasTZ) {
+        throw new Error('DateError: string ' + str + ' contains both \'Z\' and a timezone.');
+      }
+      var timestr = void 0;
+      switch (true) {
+        case hasZ:
+          var _time$split = time.split('Z');
+
+          var _time$split2 = _slicedToArray(_time$split, 1);
+
+          timestr = _time$split2[0];
+
+          break;
+        case hasTZ:
+          var _time$split3 = time.split(/[+-]/);
+
+          var _time$split4 = _slicedToArray(_time$split3, 1);
+
+          timestr = _time$split4[0];
+
+          break;
+        default:
+          timestr = time;
+          break;
+      }
+
+      var _timestr$split$map = timestr.split(':').map(function (x) {
+        return +x;
+      });
+
+      var _timestr$split$map2 = _slicedToArray(_timestr$split$map, 3);
+
+      hr = _timestr$split$map2[0];
+      min = _timestr$split$map2[1];
+      sec = _timestr$split$map2[2];
+    }
+
+    var _date$split$map = date.split(dateSplitter).map(function (x) {
       return +x;
     });
 
-    var _str$split$map2 = _slicedToArray(_str$split$map, 3);
+    var _date$split$map2 = _slicedToArray(_date$split$map, 3);
 
-    var first = _str$split$map2[0];
-    var second = _str$split$map2[1];
-    var third = _str$split$map2[2];
+    var first = _date$split$map2[0];
+    var second = _date$split$map2[1];
+    var third = _date$split$map2[2];
 
     var _ref = first > 11 || third < 32 ? [first, second, third] : [third, second, first];
 
@@ -242,125 +391,127 @@
     var mn = _ref2[1];
     var day = _ref2[2];
 
-    return [yr, mn, day];
-  });
-
-  /*   Public Functions   */
-
-  //* :: HTMLElement -> HTMLElement
-  var toDateInput = _upgradeInput('input', 'date');
-  var toTimeInput = _upgradeInput('input', 'time');
-  var toPaperDate = _upgradeInput('paper-input', 'date');
-  var toPaperTime = _upgradeInput('paper-input', 'time');
-
-  //dateify :: String -> Date
-  var dateify = _takesString(function (str) {
-    var yr = void 0,
-        hr = void 0,
-        min = void 0,
-        sec = void 0,
-        mon = void 0,
-        day = void 0,
-        tzOff = void 0,
-        tz = void 0;
-    var datestr = str.replace(/\//g, '-');
-    var ISOdate = datestr.match(VALID_DATE);
-    var ISOtime = datestr.match(VALID_TIME);
-    switch (false) {
-      case !datestr.match(DATESTR_REGEX):
-        var _datestr$split = datestr.split(' ');
-
-        var _datestr$split2 = _slicedToArray(_datestr$split, 6);
-
-        var month = _datestr$split2[1];
-        var dy = _datestr$split2[2];
-        var year = _datestr$split2[3];
-        var time = _datestr$split2[4];
-        var timezone = _datestr$split2[5];
-
-        mon = MONTHS.indexOf(month);
-        day = +dy;
-        yr = +year;
-
-        var _ref3 = time ? time.split(':').map(function (x) {
-          return +x;
-        }) : [0, 0, 0];
-
-        var _ref4 = _slicedToArray(_ref3, 3);
-
-        hr = _ref4[0];
-        min = _ref4[1];
-        sec = _ref4[2];
-
-        tzOff = timezone ? timezone.match(/[A-Z]{3}([-+][0-9]{4})/)[1] : null;
-        break;
-      case !(ISOdate && ISOtime):
-        var datepart = ISOdate[0];
-
-        var _destructureDateStrin = destructureDateString(datepart);
-
-        var _destructureDateStrin2 = _slicedToArray(_destructureDateStrin, 3);
-
-        yr = _destructureDateStrin2[0];
-        mon = _destructureDateStrin2[1];
-        day = _destructureDateStrin2[2];
-
-        var _ISOtime$0$match$0$sp = ISOtime[0].match(/[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?/)[0].split(':').map(function (x) {
-          return +x;
-        });
-
-        var _ISOtime$0$match$0$sp2 = _slicedToArray(_ISOtime$0$match$0$sp, 3);
-
-        hr = _ISOtime$0$match$0$sp2[0];
-        min = _ISOtime$0$match$0$sp2[1];
-        sec = _ISOtime$0$match$0$sp2[2];
-
-        tzOff = (ISOtime[0].match(/[-+][0-2][0-9]:[0-5][0-9]/) || [])[0];
-        mon -= 1;
-        break;
-      case !ISOdate:
-        var _destructureDateStrin3 = destructureDateString(ISOdate[0]);
-
-        var _destructureDateStrin4 = _slicedToArray(_destructureDateStrin3, 3);
-
-        yr = _destructureDateStrin4[0];
-        mon = _destructureDateStrin4[1];
-        day = _destructureDateStrin4[2];
-
-        mon -= 1;
-        break;
-      default:
-        throw new Error('Datestring ' + datestr + ': format not recognized');
-        break;
-    }
-    var tempD = _makeDate.apply(undefined, _toConsumableArray([yr, mon, day, hr, min, sec].map(function (x) {
+    var arr = [yr, mn - 1, day, hr, min, sec].map(function (x) {
       return x || 0;
-    })));
-    var n = tempD.getTime();
-    tz = tzOff ? function (t) {
-      var sign = t[0] === '+' ? t[0] : '-';
-      var rest = t.slice(1);
+    });
+    return !hasTZ ? arr : function () {
+      var sign = hasTZ[0][0];
 
-      var _ref5 = rest.indexOf(':') === -1 ? [rest.slice(0, 2), rest.slice(2, 4)] : rest.split(':');
+      var _hasTZ$0$slice$split = hasTZ[0].slice(1, hasTZ.length).split(':');
 
-      var _ref6 = _slicedToArray(_ref5, 2);
+      var _hasTZ$0$slice$split2 = _slicedToArray(_hasTZ$0$slice$split, 2);
 
-      var hour = _ref6[0];
-      var min = _ref6[1];
+      var hours = _hasTZ$0$slice$split2[0];
+      var minutes = _hasTZ$0$slice$split2[1];
 
-      return +(sign + hour) * 60 + +(sign + min); //IDKWTF js does tzoffsets in *minutes*
-    }(tzOff) : 0;
-    return _makeDate(n - tz * 60 * 1000);
-  });
+      var tzMin = +(sign + hours) * 60 + +(sign + minutes);
+      return [_Date.apply(undefined, _toConsumableArray(arr)).getTime() - tzMin * 60 * 1000];
+    }();
+  }), typed.guard('__dateString', function (s) {
+    var _s$split = s.split(' ');
+
+    var _s$split2 = _slicedToArray(_s$split, 6);
+
+    var month = _s$split2[1];
+    var dy = _s$split2[2];
+    var year = _s$split2[3];
+    var time = _s$split2[4];
+    var timezone = _s$split2[5];
+
+    var mon = MONTHS.indexOf(month);
+    var day = +dy;
+    var yr = +year;
+
+    var _ref3 = time ? time.split(':').map(function (x) {
+      return +x;
+    }) : [0, 0, 0];
+
+    var _ref4 = _slicedToArray(_ref3, 3);
+
+    var hr = _ref4[0];
+    var min = _ref4[1];
+    var sec = _ref4[2];
+
+    // let tzOff = timezone ? timezone.match(/[A-Z]{3}([-+][0-9]{4})/)[1] : null;
+    return [yr, mon, day, hr, min, sec].map(function (x) {
+      return x || 0;
+    });
+  }), typed.guard('date', function (d) {
+    return [d.getFullYear(), d.getMonth(), //no +1
+    d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()];
+  })]);
+
+  var dateify = typed.Dispatcher([typed.guard('string', function (s) {
+    return _Date.apply(undefined, _toConsumableArray(extractDateParts(s)));
+  }), typed.guard('number', function (n) {
+    return _Date(n);
+  }), typed.guard('date', function (d) {
+    return d;
+  }), typed.guard('__Array<Number>', function (arr) {
+    return _Date.apply(undefined, _toConsumableArray(arr));
+  })]);
+  // const dateify = _takesString(str => {
+  //   let yr, hr, min, sec, mon, day, tzOff, tz;
+  //   let datestr = str.replace(/\//g, '-');
+  //   let ISOdate = datestr.match(VALID_DATE);
+  //   let ISOtime = datestr.match(VALID_TIME);
+  //   switch (false) {
+  //     case (!datestr.match(DATESTR_REGEX)):
+  //       let [
+  //         ,
+  //         month,
+  //         dy,
+  //         year,
+  //         time,
+  //         timezone
+  //       ] = datestr.split(' ');
+  //       mon = MONTHS.indexOf(month);
+  //       day = +dy;
+  //       yr  = +year;
+  //       [hr, min, sec] = time ? time.split(':').map(x => +x) : [0,0,0];
+  //       tzOff = timezone ? timezone.match(/[A-Z]{3}([-+][0-9]{4})/)[1] : null;
+  //       break;
+  //     case (!(ISOdate && ISOtime)):
+  //       let datepart   = ISOdate[0];
+  //       [yr, mon, day] = destructureDateString(datepart);
+  //       [hr, min, sec] = ISOtime[0]
+  //         .match(/[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?/)[0]
+  //         .split(':')
+  //         .map(x => +x);
+  //       tzOff = (ISOtime[0].match(/[-+][0-2][0-9]:[0-5][0-9]/) || [])[0];
+  //       mon -= 1;
+  //       break;
+  //     case (!ISOdate):
+  //       [yr, mon, day] = destructureDateString(ISOdate[0]);
+  //       mon -= 1;
+  //       break;
+  //     default:
+  //       throw new Error(`Datestring ${datestr}: format not recognized`);
+  //       break;
+  //   }
+  //   let tempD = _makeDate(...[yr, mon, day, hr, min, sec].map(x => x || 0));
+  //   let n = tempD.getTime();
+  //   tz = tzOff ?
+  //     ((t) => {
+  //       let sign = t[0] === '+' ? t[0] : '-';
+  //       let rest = t.slice(1);
+  //       let [hour, min] = rest.indexOf(':') === -1 ?
+  //         [rest.slice(0,2), rest.slice(2,4)] :
+  //         rest.split(':');
+  //       return +(sign + hour) * 60 + +(sign + min); //IDKWTF js does tzoffsets in *minutes*
+  //     })(tzOff) :
+  //     0;
+  //   return _makeDate(n - (tz * 60 * 1000));
+  // });
 
   //deDateify :: Date -> String
-  var deDateify = _takesDate(function (date) {
+  var deDateify = typed.guard('date', function (date) {
     return date.getFullYear() + '-' + _padInt(date.getMonth() + 1) + '-' + _padInt(date.getDate());
   });
 
   //isLeapYear :: Number -> Boolean
   var isLeapYear = function (err) {
-    return _takesNum(function (yr) {
+    return typed.guard('number', function (yr) {
       //check for the special years, see https://www.wwu.edu/skywise/leapyear.html
       if (yr === 0) {
         throw err;
@@ -384,11 +535,19 @@
   //toUTCDateString :: Date   -> String
   //toUTCDateString :: String -> String
   //Returns date string in UTC time ISO 8601 format - YYYY-MM-DDTHH:MM:SSZ
-  var toUTCDateString = _dateOrString(function (day) {
-    var date = day instanceof Date ? _makeDate(day.getTime() + day.getTimezoneOffset() * 60 * 1000) : dateify(day);
+  var toUTCDateString = function toUTCDateString(arg) {
+    var date = dateify(arg);
     var str = deDateify(date);
     return str + ('T' + _padInt(date.getHours()) + ':' + _padInt(date.getMinutes()) + ':' + _padInt(date.getSeconds()) + 'Z');
-  });
+  };
+  // const toUTCDateString = _dateOrString(day => {
+  //   let date = day instanceof Date ?
+  //     _makeDate(day.getTime() + (day.getTimezoneOffset() * 60 * 1000)) :
+  //     dateify(day);
+  //   let str = deDateify(date);
+  //   return str +
+  //     `T${_padInt(date.getHours())}:${_padInt(date.getMinutes())}:${_padInt(date.getSeconds())}Z`;
+  // });
 
   //order :: [Date] -> [Date]
   //Returns an array of the passed-in Date objects in ascending chronological order.
@@ -410,6 +569,6 @@
   exports.deDateify = deDateify;
   exports.isLeapYear = isLeapYear;
   exports.toUTCDateString = toUTCDateString;
-  exports.destructure = destructureDate;
+  exports.destructure = extractDateParts;
   exports.order = order;
 });

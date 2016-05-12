@@ -1,5 +1,5 @@
 {
-  "name": "dateify-js",
+  "name": "dateify",
   "version": "0.2.3",
   "description": "Lightweight javascript date/time library",
   "main": "dateify.js",
@@ -42,6 +42,7 @@
     ]
   },
   "dependencies": {
-    "decorators-js": "git+https://github.com/jasmith79/decorators-js.git"
+    "decorators-js": "^3.0.1",
+    "js-typed": "^0.2.6"
   }
 }
