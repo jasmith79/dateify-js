@@ -34,9 +34,8 @@ const VALID_DATE = /(?:[0-9]{4}[-\/][0-1][0-9][-\/][0-3][0-9])|(?:[0-1][0-9][-\/
 const VALID_TIME = /[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?[+-Z]?(?:[0-2][0-9]:[0-5][0-9])?/;
 
 //ISO-conforming defaults
-// const IS_INPUT       = /input/i;
-// const DATE_DEF_REGEX = /^y{1,4}-?m{0,2}-?d{0,2}/i;
-// const TIME_DEF_REGEX = /^h{1,2}:?m{0,2}:?s{0,2}\s*[ap]?/i;
+const DATE_DEF_REGEX = /^y{1,4}-?m{0,2}-?d{0,2}/i;
+const TIME_DEF_REGEX = /^h{1,2}:?m{0,2}:?s{0,2}\s*[ap]?/i;
 const DATE_DEFAULT   = 'yyyy-mm-dd';
 const TIME_DEFAULT   = 'hh:mm';
 const FN_NAME_REGEX  = /^\s*function\s*(\S*)\s*\(/;
@@ -72,12 +71,6 @@ const DATE_TYPE_SUPPORTED = (() => {
   return input.value !== notDate;
 })();
 
-//Has IE workaround for lack of function name property on Functions
-//_getFnName :: (* -> *) -> String
-const _getFnName = typed.guard('function', fn => {
-  return fn.name || ((('' + fn).match(FN_NAME_REGEX) || [])[1] || 'Anonymous');
-});
-
 // padInt :: Number -> String
 const _padInt = d.padInt(2);
 
@@ -95,33 +88,53 @@ typed.defType('__dateString', s => typed.isType('string', s) && s.match(DATESTR_
 typed.defType('__isoDateString', s => typed.isType('string', s) && s.match(VALID_DATE));
 
 // _upgradeInput :: String -> HTMLInputElement -> HTMLInputElement
-const _upgradeInput = typed.guard((type, input) => {
+const _upgradeInput = ((timeValidator, dateValidator) => {
+  return typed.guard((type, input) => {
 
-  //right now date type is not supported in phantomjs so the tests all work, but if it starts
-  //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
-  if (DATE_TYPE_SUPPORTED) {
-    input.setAttribute('type', type);
-  } else {
-    input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
-    input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
-    input.value = input.DEFAULT;
-    let validfn = type === 'date' ? dateValidator : timeValidator;
+    //right now date type is not supported in phantomjs so the tests all work, but if it starts
+    //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
+    if (DATE_TYPE_SUPPORTED) {
+      input.setAttribute('type', type);
+    } else {
+      input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+      input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+      input.value = input.DEFAULT;
+      let validfn = type === 'date' ? dateValidator : timeValidator;
 
-    input.validate = function(fn) {
-      let ctx = this;
-      ctx.addEventListener('input', wait500((e) => {
-        ctx.valid = false;
-        validfn.call(ctx, fn);
-      }));
-    };
-    input.validate(function(e) {
-      if (!this.value) {
-        this.value = this.DEFAULT;
-      }
-    });
+      input.validate = function(fn) {
+        let ctx = this;
+        ctx.addEventListener('input', wait500((e) => {
+          ctx.valid = false;
+          validfn.call(ctx, fn);
+        }));
+      };
+      input.validate(function(e) {
+        if (!this.value) {
+          this.value = this.DEFAULT;
+        }
+      });
+    }
+    return input;
+  });
+})(
+  function(fn) {
+    let def = this.value.match(TIME_DEF_REGEX);
+    let valid = def || this.value.match(VALID_TIME);
+    if (!valid) {
+      fn.call(this, this);
+    } else {
+      this.valid = true;
+    }
+  }, function(fn) {
+    let def = this.value.match(DATE_DEF_REGEX);
+    let valid = def || this.value.match(VALID_DATE);
+    if (!valid) {
+      fn.call(this, this);
+    } else {
+      this.valid = true;
+    }
   }
-  return input;
-});
+);
 
 // _defaultTag :: String -> Maybe HTMLElement -> HTMLElement
 const _defaultTag  = tag => el => el || document.createElement(tag);

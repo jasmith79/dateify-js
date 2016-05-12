@@ -99,9 +99,9 @@
   var VALID_TIME = /[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?[+-Z]?(?:[0-2][0-9]:[0-5][0-9])?/;
 
   //ISO-conforming defaults
-  // const IS_INPUT       = /input/i;
-  // const DATE_DEF_REGEX = /^y{1,4}-?m{0,2}-?d{0,2}/i;
-  // const TIME_DEF_REGEX = /^h{1,2}:?m{0,2}:?s{0,2}\s*[ap]?/i;
+  var IS_INPUT = /input/i;
+  var DATE_DEF_REGEX = /^y{1,4}-?m{0,2}-?d{0,2}/i;
+  var TIME_DEF_REGEX = /^h{1,2}:?m{0,2}:?s{0,2}\s*[ap]?/i;
   var DATE_DEFAULT = 'yyyy-mm-dd';
   var TIME_DEFAULT = 'hh:mm';
   var FN_NAME_REGEX = /^\s*function\s*(\S*)\s*\(/;
@@ -166,34 +166,52 @@
   });
 
   // _upgradeInput :: String -> HTMLInputElement -> HTMLInputElement
-  var _upgradeInput = typed.guard(function (type, input) {
+  var _upgradeInput = function (timeValidator, dateValidator) {
+    return typed.guard(function (type, input) {
 
-    //right now date type is not supported in phantomjs so the tests all work, but if it starts
-    //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
-    if (DATE_TYPE_SUPPORTED) {
-      input.setAttribute('type', type);
+      //right now date type is not supported in phantomjs so the tests all work, but if it starts
+      //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
+      if (DATE_TYPE_SUPPORTED) {
+        input.setAttribute('type', type);
+      } else {
+        (function () {
+          input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+          input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+          input.value = input.DEFAULT;
+          var validfn = type === 'date' ? dateValidator : timeValidator;
+
+          input.validate = function (fn) {
+            var ctx = this;
+            ctx.addEventListener('input', wait500(function (e) {
+              ctx.valid = false;
+              validfn.call(ctx, fn);
+            }));
+          };
+          input.validate(function (e) {
+            if (!this.value) {
+              this.value = this.DEFAULT;
+            }
+          });
+        })();
+      }
+      return input;
+    });
+  }(function (fn) {
+    var def = this.value.match(TIME_DEF_REGEX);
+    var valid = def || this.value.match(VALID_TIME);
+    if (!valid) {
+      fn.call(this, this);
     } else {
-      (function () {
-        input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
-        input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
-        input.value = input.DEFAULT;
-        var validfn = type === 'date' ? dateValidator : timeValidator;
-
-        input.validate = function (fn) {
-          var ctx = this;
-          ctx.addEventListener('input', wait500(function (e) {
-            ctx.valid = false;
-            validfn.call(ctx, fn);
-          }));
-        };
-        input.validate(function (e) {
-          if (!this.value) {
-            this.value = this.DEFAULT;
-          }
-        });
-      })();
+      this.valid = true;
     }
-    return input;
+  }, function (fn) {
+    var def = this.value.match(DATE_DEF_REGEX);
+    var valid = def || this.value.match(VALID_DATE);
+    if (!valid) {
+      fn.call(this, this);
+    } else {
+      this.valid = true;
+    }
   });
 
   // _defaultTag :: String -> Maybe HTMLElement -> HTMLElement
