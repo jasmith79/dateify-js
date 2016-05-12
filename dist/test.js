@@ -89,8 +89,14 @@
       expect(dateify.dateify(meh).getTime()).toBe(n);
       expect(dateify.dateify(jsstr).getTime()).toBe(nplus);
       expect(dateify.dateify(jsdstr).getTime()).toBe(nplus - 1000 * 60 * 60 * 15); //midnight vs 3pm
+    });
+
+    it('Should throw on invalid datestrings', function () {
       expect(function () {
         return dateify.dateify('24687965');
+      }).toThrow();
+      expect(function () {
+        return dateify.dateify('2014-01-01T10:00:00Z-05:00');
       }).toThrow();
     });
   });
