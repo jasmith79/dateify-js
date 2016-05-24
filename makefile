@@ -24,15 +24,15 @@ jasmine:
 serve:
 	node spec/server.js
 
-$(MOD):
+$(MOD): $(SRC)
 	@mkdir -p $(@D)
-	babel $(SRC) -o $@
+	babel $< -o $@
 
 $(MIN): $(MOD)
 	@mkdir -p $(@D)
 	uglifyjs -cmo $@ $^
 
-$(TEST):
-	babel spec/test.es -o $@
+$(TEST): spec/test.es
+	babel $< -o $@
 
 .PHONY: test clean build install all jasmine

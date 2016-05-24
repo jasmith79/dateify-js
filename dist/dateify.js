@@ -99,7 +99,6 @@
   var VALID_TIME = /[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?[+-Z]?(?:[0-2][0-9]:[0-5][0-9])?/;
 
   //ISO-conforming defaults
-  var IS_INPUT = /input/i;
   var DATE_DEF_REGEX = /^y{1,4}-?m{0,2}-?d{0,2}/i;
   var TIME_DEF_REGEX = /^h{1,2}:?m{0,2}:?s{0,2}\s*[ap]?/i;
   var DATE_DEFAULT = 'yyyy-mm-dd';
@@ -137,12 +136,6 @@
     input.setAttribute('value', notDate);
     return input.value !== notDate;
   }();
-
-  //Has IE workaround for lack of function name property on Functions
-  //_getFnName :: (* -> *) -> String
-  var _getFnName = typed.guard('function', function (fn) {
-    return fn.name || (('' + fn).match(FN_NAME_REGEX) || [])[1] || 'Anonymous';
-  });
 
   // padInt :: Number -> String
   var _padInt = d.padInt(2);
