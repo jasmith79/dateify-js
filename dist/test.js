@@ -85,9 +85,9 @@
     it('should handle datestrings in various formats', function () {
       expect(dateify.dateify(iso).getTime()).toBe(n);
       expect(dateify.dateify(isoz).getTime()).toBe(nplus);
-      expect(dateify.dateify(isotz).getTime()).toBe(nplus);
+      expect(dateify.dateify(isotz).getTime()).toBe(n); // gettime is always UTC
       expect(dateify.dateify(meh).getTime()).toBe(n);
-      expect(dateify.dateify(jsstr).getTime()).toBe(nplus);
+      expect(dateify.dateify(jsstr).getTime()).toBe(n);
       expect(dateify.dateify(jsdstr).getTime()).toBe(nplus - 1000 * 60 * 60 * 15); //midnight vs 3pm
     });
 
