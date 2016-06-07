@@ -1,6 +1,6 @@
 {
   "name": "dateify",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "description": "Lightweight javascript date/time library",
   "main": "dateify.js",
   "directories": {
@@ -42,7 +42,7 @@
     ]
   },
   "dependencies": {
-    "decorators-js": "^3.0.1",
-    "js-typed": "^0.2.6"
+    "decorators-js": "^3.0.6",
+    "js-typed": "^1.0.0"
   }
 }

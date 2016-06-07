@@ -4,7 +4,6 @@ MOD   := dist/dateify.js
 MIN   := dist/dateify.min.js
 SRC   := src/dateify.es
 SPEC  := spec/test.es
-
 TEST  := dist/test.js
 
 all: install build
@@ -28,7 +27,7 @@ serve:
 
 $(MOD): $(SRC)
 	@mkdir -p $(@D)
-	babel $(SRC) -o $@
+	babel $< -o $@
 
 $(MIN): $(MOD)
 	@mkdir -p $(@D)
