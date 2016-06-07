@@ -64,11 +64,15 @@ const DATESTR_REGEX  = new RegExp([
 // })();
 
 const DATE_TYPE_SUPPORTED = (() => {
-  let input = document.createElement('input');
-  let notDate = 'not-a-date';
-  input.setAttribute('type', 'date');
-  input.setAttribute('value', notDate);
-  return input.value !== notDate;
+  if (typeof document === 'undefined') {
+    return false;
+  } else {
+    let input = document.createElement('input');
+    let notDate = 'not-a-date';
+    input.setAttribute('type', 'date');
+    input.setAttribute('value', notDate);
+    return input.value !== notDate;
+  }
 })();
 
 // padInt :: Number -> String
