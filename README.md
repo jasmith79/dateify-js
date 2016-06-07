@@ -32,6 +32,14 @@ meant as an alternative to moment.js, more that its small as possible while stil
 
   Same as deDateify but outputs a zulu time string.
 
+###destructure
+  * `destructure :: Date -> [Number]`
+
+  Performs the reverse operation of the Date constructor: takes a Date and returns an array of its
+  numbers `[yr, mon*, day, hr, min, sec]`, same position as the Date constructor takes them.
+
+  \* Does *not* add 1 to the month, i.e. January is 0.
+
 ##Input Upgrades
 
 Because not all browsers implement input type='date/time' dateify provides some functions to implement
