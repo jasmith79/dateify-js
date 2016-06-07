@@ -102,8 +102,13 @@
   });
 
   describe('deDateify', function () {
-    it('should return a yyyy-mm-dd string for various dates', function () {
-      expect(dateify.deDateify(d)).toBe('2014-01-01');
+    console.log(Object.prototype.toString.call(d));
+    it('should return an ISO-formatted datestring with timezone', function () {
+      expect(dateify.deDateify(d)).toBe(isotz);
+    });
+
+    it('should be the inverse operation of dateify', function () {
+      expect(dateify.deDateify(dateify.dateify(isotz))).toBe(isotz);
     });
   });
 

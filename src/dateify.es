@@ -241,21 +241,28 @@ const dateify = typed.Dispatcher([
   typed.guard('__Array<Number>', arr => _Date(...arr))
 ]);
 
-//deDateify :: Date -> ISODateString
+// deDateify :: Date -> ISODateString
+// returns an ISO 8601 datestring with timezone
 const deDateify = typed.guard('date', date => {
-  return `${date.getFullYear()}-${_padInt(date.getMonth() + 1)}-${_padInt(date.getDate())}`;
+  let [yr, mn, dy, hr, min, sec] = extractDateParts(d);
+  let tz = d.getTimezoneOffset();
+  let sign = tz > 0 ? '-' : '+';
+  let hrs = tz / 60 | 0;
+  let mins = tz % 60;
+  return `${yr}-${_padInt(mn + 1)}-${_padInt(dy)}T${_padInt(hr)}:${_padInt(min)}:${_padInt(sec)}` +
+    `${sign}${_padInt(hrs)}:(_padInt(mins))`;
 });
 
-//isLeapYear :: Number -> Boolean
+// isLeapYear :: Number -> Boolean
 const isLeapYear = ((err) => {
   return typed.guard('number', yr => {
-    //check for the special years, see https://www.wwu.edu/skywise/leapyear.html
+    // check for the special years, see https://www.wwu.edu/skywise/leapyear.html
     if (yr === 0) {
       throw err;
     }
-    //after 8 AD, follows 'normal' leap year rules
+    // after 8 AD, follows 'normal' leap year rules
     let passed = true;
-    //not technically true as there were 13 LY BCE, but hey.
+    // not technically true as there were 13 LY BCE, but hey.
     if (yr === 4 || yr < 0 || (yr % 4)) {
       passed = false;
     } else {
@@ -269,9 +276,9 @@ const isLeapYear = ((err) => {
   });
 })(new Error('Year zero does not exist, refers to 1 BCE'));
 
-//toUTCDateString :: Date   -> String
-//toUTCDateString :: String -> String
-//Returns date string in UTC time ISO 8601 format - YYYY-MM-DDTHH:MM:SSZ
+// toUTCDateString :: Date   -> ISODateString
+// toUTCDateString :: String -> ISODateString
+// Returns date string in UTC time ISO 8601 format - YYYY-MM-DDTHH:MM:SSZ
 const toUTCDateString = arg => {
   let d = dateify(arg);
   let date = new Date(d.getTime() + (d.getTimezoneOffset() * 60 * 1000));
@@ -280,8 +287,8 @@ const toUTCDateString = arg => {
     `T${_padInt(date.getHours())}:${_padInt(date.getMinutes())}:${_padInt(date.getSeconds())}Z`;
 }
 
-//order :: [Date] -> [Date]
-//Returns an array of the passed-in Date objects in ascending chronological order.
+// order :: [Date] -> [Date]
+// Returns an array of the passed-in Date objects in ascending chronological order.
 const order = d.unGather((...args) => args.sort((a, b) => a.getTime() - b.getTime()));
 
 export {
