@@ -313,4 +313,5 @@ export {
   toUTCDateString,
   extractDateParts as destructure,
   order,
+  inRange,
 };

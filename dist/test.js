@@ -167,6 +167,17 @@
     });
   });
 
+  describe('inRange', function () {
+    it('should test if a date is in a given range', function () {
+      var test = dateify.inRange(new Date(2015, 0, 1), new Date(2014, 1, 1));
+      expect(test(new Date(2015, 0, 1))).toBe(true);
+      expect(test(new Date(2014, 1, 1))).toBe(true);
+      expect(test(new Date(2016, 0, 1))).toBe(false);
+      expect(test(new Date(2013, 0, 1))).toBe(false);
+      expect(test(new Date(2014, 6, 6))).toBe(true);
+    });
+  });
+
   /*   Browser tests   */
   if (HTML) {
     (function () {

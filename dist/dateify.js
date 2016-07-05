@@ -16,7 +16,7 @@
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.order = exports.destructure = exports.toUTCDateString = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
+  exports.inRange = exports.order = exports.destructure = exports.toUTCDateString = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
 
   var d = _interopRequireWildcard(_decoratorsJs);
 
@@ -455,6 +455,22 @@
     });
   });
 
+  // inRange :: Date -> Date -> Date -> Boolean
+  // Returns whether the date is in the given range, inclusive.
+  var inRange = typed.guard(['date', 'date', 'date'], function (a, b, test) {
+    var _order = order(a, b);
+
+    var _order2 = _slicedToArray(_order, 2);
+
+    var start = _order2[0];
+    var end = _order2[1];
+
+    var x = start.getTime();
+    var y = end.getTime();
+    var z = test.getTime();
+    return z <= y && z >= x;
+  });
+
   exports.toDateInput = toDateInput;
   exports.toTimeInput = toTimeInput;
   exports.toPaperDate = toPaperDate;
@@ -465,4 +481,5 @@
   exports.toUTCDateString = toUTCDateString;
   exports.destructure = extractDateParts;
   exports.order = order;
+  exports.inRange = inRange;
 });
