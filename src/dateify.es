@@ -183,14 +183,15 @@ const extractDateParts = typed.Dispatcher([
     let [first, second, third] = date.split(dateSplitter).map(x => +x);
     let [yr, mn, day] = first > 11 || third < 32 ? [first, second, third] : [third, second, first];
     let arr = [yr, mn - 1, day, hr, min, sec].map(x => x || 0);
-    return !hasTZ ?
-      arr :
-      (() => {
-        let sign = hasTZ[0][0];
-        let [hours, minutes] = hasTZ[0].slice(1, hasTZ[0].length).split(':');
-        let tzMin = (+(sign + hours) * 60) + +(sign + minutes);
-        return [_Date(...arr).getTime() - (tzMin * 60 * 1000)];
-      })();
+    return arr;
+    // return !hasTZ ?
+    //   arr :
+    //   (() => {
+    //     let sign = hasTZ[0][0];
+    //     let [hours, minutes] = hasTZ[0].slice(1, hasTZ[0].length).split(':');
+    //     let tzMin = (+(sign + hours) * 60) + +(sign + minutes);
+    //     return [_Date(...arr).getTime() - (tzMin * 60 * 1000)];
+    //   })();
   }),
   typed.guard('__dateString', s => {
     let [
@@ -205,7 +206,7 @@ const extractDateParts = typed.Dispatcher([
     let day = +dy;
     let yr  = +year;
     let [hr, min, sec] = time ? time.split(':').map(x => +x) : [0,0,0];
-    let tzOff = s.match(/[-+][01][0-9][0-5][0-9]/);
+    let tzOff = false;//s.match(/[-+][01][0-9][0-5][0-9]/);
     let arr = [yr, mon, day, hr, min, sec].map(x => x || 0);
     return !tzOff ?
       arr :
@@ -243,14 +244,14 @@ const dateify = typed.Dispatcher([
 
 // deDateify :: Date -> ISODateString
 // returns an ISO 8601 datestring with timezone
-const deDateify = typed.guard('date', date => {
+const deDateify = typed.guard('date', d => {
   let [yr, mn, dy, hr, min, sec] = extractDateParts(d);
   let tz = d.getTimezoneOffset();
   let sign = tz > 0 ? '-' : '+';
   let hrs = tz / 60 | 0;
   let mins = tz % 60;
   return `${yr}-${_padInt(mn + 1)}-${_padInt(dy)}T${_padInt(hr)}:${_padInt(min)}:${_padInt(sec)}` +
-    `${sign}${_padInt(hrs)}:(_padInt(mins))`;
+    `${sign}${_padInt(hrs)}:${_padInt(mins)}`;
 });
 
 // isLeapYear :: Number -> Boolean
@@ -282,9 +283,9 @@ const isLeapYear = ((err) => {
 const toUTCDateString = arg => {
   let d = dateify(arg);
   let date = new Date(d.getTime() + (d.getTimezoneOffset() * 60 * 1000));
-  let str = deDateify(date);
-  return str +
-    `T${_padInt(date.getHours())}:${_padInt(date.getMinutes())}:${_padInt(date.getSeconds())}Z`;
+  let [yr, mn, dy, hr, min, sec] = extractDateParts(date);
+  return `${yr}-${_padInt(mn + 1)}-${_padInt(dy)}` +
+    `T${_padInt(hr)}:${_padInt(min)}:${_padInt(sec)}Z`;
 }
 
 // order :: [Date] -> [Date]

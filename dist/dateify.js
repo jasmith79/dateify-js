@@ -313,19 +313,15 @@
     var arr = [yr, mn - 1, day, hr, min, sec].map(function (x) {
       return x || 0;
     });
-    return !hasTZ ? arr : function () {
-      var sign = hasTZ[0][0];
-
-      var _hasTZ$0$slice$split = hasTZ[0].slice(1, hasTZ[0].length).split(':');
-
-      var _hasTZ$0$slice$split2 = _slicedToArray(_hasTZ$0$slice$split, 2);
-
-      var hours = _hasTZ$0$slice$split2[0];
-      var minutes = _hasTZ$0$slice$split2[1];
-
-      var tzMin = +(sign + hours) * 60 + +(sign + minutes);
-      return [_Date.apply(undefined, _toConsumableArray(arr)).getTime() - tzMin * 60 * 1000];
-    }();
+    return arr;
+    // return !hasTZ ?
+    //   arr :
+    //   (() => {
+    //     let sign = hasTZ[0][0];
+    //     let [hours, minutes] = hasTZ[0].slice(1, hasTZ[0].length).split(':');
+    //     let tzMin = (+(sign + hours) * 60) + +(sign + minutes);
+    //     return [_Date(...arr).getTime() - (tzMin * 60 * 1000)];
+    //   })();
   }), typed.guard('__dateString', function (s) {
     var _s$split = s.split(' ');
 
@@ -351,7 +347,7 @@
     var min = _ref4[1];
     var sec = _ref4[2];
 
-    var tzOff = s.match(/[-+][01][0-9][0-5][0-9]/);
+    var tzOff = false; //s.match(/[-+][01][0-9][0-5][0-9]/);
     var arr = [yr, mon, day, hr, min, sec].map(function (x) {
       return x || 0;
     });
@@ -384,7 +380,7 @@
 
   // deDateify :: Date -> ISODateString
   // returns an ISO 8601 datestring with timezone
-  var deDateify = typed.guard('date', function (date) {
+  var deDateify = typed.guard('date', function (d) {
     var _extractDateParts = extractDateParts(d);
 
     var _extractDateParts2 = _slicedToArray(_extractDateParts, 6);
@@ -400,7 +396,7 @@
     var sign = tz > 0 ? '-' : '+';
     var hrs = tz / 60 | 0;
     var mins = tz % 60;
-    return yr + '-' + _padInt(mn + 1) + '-' + _padInt(dy) + 'T' + _padInt(hr) + ':' + _padInt(min) + ':' + _padInt(sec) + ('' + sign + _padInt(hrs) + ':(_padInt(mins))');
+    return yr + '-' + _padInt(mn + 1) + '-' + _padInt(dy) + 'T' + _padInt(hr) + ':' + _padInt(min) + ':' + _padInt(sec) + ('' + sign + _padInt(hrs) + ':' + _padInt(mins));
   });
 
   // isLeapYear :: Number -> Boolean
@@ -432,8 +428,19 @@
   var toUTCDateString = function toUTCDateString(arg) {
     var d = dateify(arg);
     var date = new Date(d.getTime() + d.getTimezoneOffset() * 60 * 1000);
-    var str = deDateify(date);
-    return str + ('T' + _padInt(date.getHours()) + ':' + _padInt(date.getMinutes()) + ':' + _padInt(date.getSeconds()) + 'Z');
+
+    var _extractDateParts3 = extractDateParts(date);
+
+    var _extractDateParts4 = _slicedToArray(_extractDateParts3, 6);
+
+    var yr = _extractDateParts4[0];
+    var mn = _extractDateParts4[1];
+    var dy = _extractDateParts4[2];
+    var hr = _extractDateParts4[3];
+    var min = _extractDateParts4[4];
+    var sec = _extractDateParts4[5];
+
+    return yr + '-' + _padInt(mn + 1) + '-' + _padInt(dy) + ('T' + _padInt(hr) + ':' + _padInt(min) + ':' + _padInt(sec) + 'Z');
   };
 
   // order :: [Date] -> [Date]
