@@ -291,6 +291,16 @@ const toUTCDateString = arg => {
 // Returns an array of the passed-in Date objects in ascending chronological order.
 const order = d.unGather((...args) => args.sort((a, b) => a.getTime() - b.getTime()));
 
+// inRange :: Date -> Date -> Date -> Boolean
+// Returns whether the date is in the given range, inclusive.
+const inRange = typed.guard(['date', 'date', 'date'], (a, b, test) => {
+  let [start, end] = order(a, b);
+  let x = start.getTime();
+  let y = end.getTime();
+  let z = test.getTime();
+  return z <= y && z >= x;
+});
+
 export {
   toDateInput,
   toTimeInput,
