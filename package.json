@@ -1,6 +1,6 @@
 {
   "name": "dateify",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Lightweight javascript date/time library",
   "main": "dateify.js",
   "directories": {
