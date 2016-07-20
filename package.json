@@ -42,7 +42,7 @@
     ]
   },
   "dependencies": {
-    "decorators-js": "^3.1.0",
-    "js-typed": "^1.0.1"
+    "decorators-js": "^3.1.1",
+    "js-typed": "^1.0.2"
   }
 }
