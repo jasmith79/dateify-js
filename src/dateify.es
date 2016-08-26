@@ -11,6 +11,172 @@
 import * as d from 'decorators-js';
 import * as typed from 'js-typed';
 
+/*   Polyfills  */
+if (typeof Number.isNaN !== 'function') {
+  Number.isNaN = (x => x !== x);
+}
+
+// returns [yr, mn, dy, hr, min, sec] in *local* time for the executing JS environment.
+// NOTE: months are 0-11.
+let destructure = typed.Dispatcher([
+  typed.guard('date', d => {
+    return Number.isNaN(d.getTime()) ? [] : [
+      d.getFullYear(),
+      d.getMonth(), //no +1
+      d.getDate(),
+      d.getHours(),
+      d.getMinutes(),
+      d.getSeconds(),
+    ];
+  }),
+
+  typed.guard('__dateString', s => {
+    let d = new Date(s);
+    return Number.isNaN(d.getTime()) ? [] : [
+      d.getFullYear(),
+      d.getMonth(), //no +1
+      d.getDate(),
+      d.getHours(),
+      d.getMinutes(),
+      d.getSeconds(),
+    ];
+  }),
+
+  typed.guard('string', s => {
+    let result = [];
+    let dateTimeSplitter = s.indexOf('T') === -1 ? ' ' : 'T';
+    let dateSplitter = s.indexOf('-') === -1 ? '/' : '-';
+
+    let [date, t] = s.split(dateTimeSplitter);
+    let dateArr = date.split(dateSplitter).map(Number);
+
+    // valid dates must have day/month/yr and there is no year 0.
+    let validDate = dateArr.length === 3 && dateArr.every(n => n > 0);
+
+    if (validDate) {
+
+      // We try to determine the position of the various pieces of the date, starting
+      // with the year. We If we cannot reliably determine the year, bail.
+      let [first, second, third] = dateArr;
+      let yr, mn, dy;
+
+      switch (true) {
+        case first > 31:
+          if (second < 13) { // assume month comes before day unless clearly otherwise
+            ([yr, mn, dy] = dateArr);
+          } else {
+            ([yr, dy, mn] = dateArr);
+          }
+
+          mn -= 1;
+          break;
+
+        case third > 31:
+          if (first < 13) {
+            ([mn, dy, yr] = dateArr);
+          } else {
+            ([dy, mn, yr] = dateArr);
+          }
+
+          mn -= 1;
+          break;
+
+        default:
+          dy = mn = yr = null;
+          break;
+      }
+
+      result.push(yr, mn, dy)
+
+    } else {
+      t = date;
+      result.push(null, null, null);
+    }
+
+    let tzSplitter = null;
+    if (t) {
+      tzSplitter = ((t) => {
+        let hasZ = t.indexOf('Z') !== -1;
+        let hasPlus = t.indexOf('+') !== -1;
+        let hasDash = t.indexOf('-') !== -1;
+        let splitters = [hasZ, hasDash, hasPlus].reduce((acc, bool, i) => {
+          if (bool) {
+            acc.push(i);
+          }
+          return acc;
+        }, []);
+
+        switch (splitters.length) {
+          case 0: return null;
+          case 1: return ['Z', '-', '+'][splitters[0]];
+          default:
+            throw new Error(`Attempted to parse a datestring with both a 'Z' and
+              a timezone.`);
+        }
+      })(t);
+    }
+
+    let [time, tz] = tzSplitter ? t.split(tzSplitter) : [t, null];
+    let timeArr = time ? time.split(':').map(Number) : [];
+    let tzOff = tz ? (() => { // in ms
+      let sign = tzSplitter;
+      let [hours, minutes] = tz.split(':');
+      return ((Number(`${sign}${hours}`) * 60) + Number(`${sign}${minutes}`)) * 60 * 1000;
+    })() : null;
+
+    let [hrs, min, sec] = timeArr;
+    let validTime = hrs >= 0 &&
+      hrs <= 24 &&
+      min >= 0 &&
+      min <= 59 &&
+      (sec == null || (sec >= 0 &&
+      sec <= 59));
+
+    if (validTime) {
+      result.push(hrs, min);
+      if (sec != null) {
+        result.push(sec);
+      }
+    }
+
+    if (result[0] && tzSplitter != null) {
+      let tempDate = _Date(...result);
+      let localOffset = tempDate.getTimezoneOffset() * 60 * 1000;
+      let adjustedTime = tempDate.getTime() - localOffset - tzOff;
+      return destructure(_Date(adjustedTime));
+    } else if (result.every(x => x == null)) {
+      return [];
+    } else {
+      return result;
+    }
+  })
+]);
+
+let _isValidDate = a => {
+  let arr = destructure(a);
+  return arr.length > 2 ? arr.slice(0, 3).every(n => typed.isType('number', n)) : false;
+};
+
+let _isValidTime = a => {
+  let arr = destructure(a);
+  return arr.length > 4 ? arr.slice(3, 5).every(n => typed.isType('number', n)) : false;
+};
+
+let isValidDate = typed.Dispatcher([
+  typed.guard('date', d => _isValidDate(d)),
+  typed.guard('string', s => _isValidDate(s))
+]);
+
+isValidDate.setDefault(x => false);
+
+let isValidTime = typed.Dispatcher([
+  typed.guard('date', d => _isValidTime(d)),
+  typed.guard('string', s => _isValidTime(s)),
+  typed.guard('number', n => !Number.isNaN(n))
+]);
+
+isValidTime.setDefault(x => false);
+
 /*   Constants   */
 const MONTHS = [
   'Jan',
@@ -151,92 +317,19 @@ const toTimeInput  = arg => _upTime(_ensureInput(arg));
 const toPaperDate  = arg => _upDate(_ensurePaper(arg));
 const toPaperTime  = arg => _upTime(_ensurePaper(arg));
 
-// extractDateParts :: ISODateString -> [Number]
-// extractDateParts :: DateString -> [Number]
-// extractDateParts :: Date -> [Number]
-const extractDateParts = typed.Dispatcher([
-  typed.guard('__isoDateString', str => {
-    let timeSplitter = str.indexOf('T') === -1 ? ' ' : 'T';
-    let dateSplitter = str.indexOf('-') >= 0 ? '-' : '/';
-    let [date, time] = str.split(timeSplitter);
-    let hr, min, sec, hasTZ;
-    if (time) {
-      let hasZ = time.indexOf('Z') !== -1;
-      hasTZ = time.match(/[-+][01][0-9]:[0-5][0-9]/);
-      if (hasZ && hasTZ) {
-        throw new Error(`DateError: string ${str} contains both 'Z' and a timezone.`);
-      }
-      let timestr;
-      switch(false) {
-        case !hasZ:
-          ([timestr] = time.split('Z'));
-          break;
-        case !hasTZ:
-          ([timestr] = time.split(/[+-]/));
-          break;
-        default:
-          timestr = time;
-          break;
-      }
-      ([hr, min, sec] = timestr.split(':').map(x => +x));
-    }
-    let [first, second, third] = date.split(dateSplitter).map(x => +x);
-    let [yr, mn, day] = first > 11 || third < 32 ? [first, second, third] : [third, second, first];
-    let arr = [yr, mn - 1, day, hr, min, sec].map(x => x || 0);
-    return arr;
-    // return !hasTZ ?
-    //   arr :
-    //   (() => {
-    //     let sign = hasTZ[0][0];
-    //     let [hours, minutes] = hasTZ[0].slice(1, hasTZ[0].length).split(':');
-    //     let tzMin = (+(sign + hours) * 60) + +(sign + minutes);
-    //     return [_Date(...arr).getTime() - (tzMin * 60 * 1000)];
-    //   })();
-  }),
-  typed.guard('__dateString', s => {
-    let [
-      ,
-      month,
-      dy,
-      year,
-      time,
-      timezone
-    ] = s.split(' ');
-    let mon = MONTHS.indexOf(month);
-    let day = +dy;
-    let yr  = +year;
-    let [hr, min, sec] = time ? time.split(':').map(x => +x) : [0,0,0];
-    let tzOff = false;//s.match(/[-+][01][0-9][0-5][0-9]/);
-    let arr = [yr, mon, day, hr, min, sec].map(x => x || 0);
-    return !tzOff ?
-      arr :
-      (() => {
-        let sign = tzOff[0][0];
-        let rest = tzOff[0].slice(1, tzOff[0].length);
-        let hours = rest.slice(0,2);
-        let minutes = rest.slice(2,4);
-        let tzMin = (+(sign + hours) * 60) + +(sign + minutes);
-        return [_Date(...arr).getTime() - (tzMin * 60 * 1000)];
-      })();
-  }),
-  typed.guard('date', d => {
-    return [
-      d.getFullYear(),
-      d.getMonth(), //no +1
-      d.getDate(),
-      d.getHours(),
-      d.getMinutes(),
-      d.getSeconds(),
-    ];
-  })
-]);
-
 // dateify :: String   -> Date
 // dateify :: Number   -> Date
 // dateify :: Date     -> Date
 // dateify :: [Number] -> Date
 const dateify = typed.Dispatcher([
-  typed.guard('string', s => _Date(...extractDateParts(s))),
+  typed.guard('string', s => {
+    let parsed = destructure(s);
+    if (!parsed.length) {
+      console.warn(`Attempted to parse non-date string ${s} as a date`);
+      return new Date(''); // invalid date
+    }
+    return _Date(...parsed);
+  }),
   typed.guard('number', n => _Date(n)),
   typed.guard('date', d => d),
   typed.guard('__Array<Number>', arr => _Date(...arr))
@@ -245,7 +338,7 @@ const dateify = typed.Dispatcher([
 // deDateify :: Date -> ISODateString
 // returns an ISO 8601 datestring with timezone
 const deDateify = typed.guard('date', d => {
-  let [yr, mn, dy, hr, min, sec] = extractDateParts(d);
+  let [yr, mn, dy, hr, min, sec] = destructure(d);
   let tz = d.getTimezoneOffset();
   let sign = tz > 0 ? '-' : '+';
   let hrs = tz / 60 | 0;
@@ -283,7 +376,7 @@ const isLeapYear = ((err) => {
 const toUTCDateString = arg => {
   let d = dateify(arg);
   let date = new Date(d.getTime() + (d.getTimezoneOffset() * 60 * 1000));
-  let [yr, mn, dy, hr, min, sec] = extractDateParts(date);
+  let [yr, mn, dy, hr, min, sec] = destructure(date);
   return `${yr}-${_padInt(mn + 1)}-${_padInt(dy)}` +
     `T${_padInt(hr)}:${_padInt(min)}:${_padInt(sec)}Z`;
 }
@@ -311,7 +404,10 @@ export {
   deDateify,
   isLeapYear,
   toUTCDateString,
-  extractDateParts as destructure,
+  //destructure as destructure,
+  destructure,
   order,
   inRange,
+  isValidDate,
+  isValidTime,
 };

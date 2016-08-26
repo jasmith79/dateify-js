@@ -11,28 +11,74 @@ import * as dateify from './dateify.js';
 
 let HTML   = 'undefined' !== typeof HTMLElement;
 let d      = new Date(2014, 0, 1, 10);
-let n      = d.getTime();
-let nplus  = n + (1000 * 60 * 60 * 5);
-let iso    = '2014-01-01T10:00:00'; //Z is assumed
-let isoz   = '2014-01-01T15:00:00Z';
 let isotz  = '2014-01-01T10:00:00-05:00';
-let meh    = '2014/01/01 10:00:00';
-let jsstr  = d.toString();
-let jsdstr = d.toDateString(); //year, month, and day only
 
-describe('dateify', function() {
-  it('should handle datestrings in various formats', function() {
-    expect(dateify.dateify(iso).getTime()).toBe(n);
-    expect(dateify.dateify(isoz).getTime()).toBe(nplus);
-    expect(dateify.dateify(isotz).getTime()).toBe(n); // gettime is always UTC
-    expect(dateify.dateify(meh).getTime()).toBe(n);
-    expect(dateify.dateify(jsstr).getTime()).toBe(n);
-    expect(dateify.dateify(jsdstr).getTime()).toBe(nplus - (1000 * 60 * 60 * 15)); //midnight vs 3pm
+describe('dateify', () => {
+  it('should handle datestrings in various formats', () => {
+    expect(
+      new Date('Fri Aug 26 2016 11:06:52 GMT+0400').toString()
+    ).toBe(
+      dateify.dateify('2016-08-26T11:06:52+04:00').toString()
+    );
+    expect(
+      new Date('Fri Aug 26 2016 11:06:52 GMT-0600').toString()
+    ).toBe(
+      dateify.dateify('2016-08-26T11:06:52-06:00').toString()
+    );
+    expect(
+      new Date('Fri Aug 26 2016 11:06:52 GMT+0000').toString()
+    ).toBe(
+      dateify.dateify('2016-08-26T11:06:52+00:00').toString()
+    );
+    expect(
+      new Date('Fri Aug 26 2016 11:06:52 GMT-0000').toString()
+    ).toBe(
+      dateify.dateify('2016-08-26T11:06:52-00:00').toString()
+    );
+    expect(
+      new Date('Fri Aug 26 2016 11:06:52 GMT+0000').toString()
+    ).toBe(
+      dateify.dateify('2016-08-26T11:06:52Z').toString()
+    );
+
+    // if timezone is omitted, string is assumed to refer to the JS environment's
+    // local time
+    expect(
+      new Date('Wed Jan 01 2014 10:00:00 GMT-0500 (EST)').toString()
+    ).toBe(
+      dateify.dateify('2014/01/01 10:00:00').toString()
+    );
+    expect(
+      new Date('Fri Jan 01 1937 10:00:00 GMT-0500 (EST)').toString()
+    ).toBe(
+      dateify.dateify('1/1/37 10:00:00').toString()
+    );
+
+    // it should parse the browser's datestrings same as the browser does:
+    let test1 = new Date();
+    expect(dateify.dateify(test1.toString()).toString()).toBe(test1.toString());
+
+    // it should handle partials
+    expect(dateify.dateify('2014/01/01').toString()).toBe('Wed Jan 01 2014 00:00:00 GMT-0500 (EST)');
   });
 
-  it('Should throw on invalid datestrings', () => {
-    expect(() => dateify.dateify('24687965')).toThrow();
-    expect(() => dateify.dateify('2014-01-01T10:00:00Z-05:00')).toThrow();
+  it('should throw on input with multiple tz designations', () => {
+    expect(() => dateify.dateify('2016-08-26T11:06:52Z-00:00')).toThrow();
+    expect(() => dateify.dateify('2016-08-26T11:06:52-00:00Z')).toThrow();
+  });
+
+  it('should return invalid date on bad string input', () => {
+    expect(dateify.dateify('').toString()).toBe('Invalid Date');
+  });
+
+  it('should return dates as-is', () => {
+    let test1 = new Date('Fri Jan 01 1937 10:00:00 GMT-0500 (EST)');
+    let test2 = new Date('');
+
+    let res1 = dateify.dateify(test1);
+    let res2 = dateify.dateify(test2);
+    expect(res1.toString()).toBe(test1.toString());
+    expect(res2.toString()).toBe(test2.toString());
   });
 });
 
@@ -90,6 +136,11 @@ describe('destructure', function() {
     expect(day).toBe(1);
     expect(hr).toBe(10);
   });
+
+  it('should handle partial strings', () => {
+    expect(dateify.destructure('10:00').toString()).toBe(',,,10,0');
+    expect(dateify.destructure('2014-01-01').toString()).toBe('2014,0,1');
+  });
 });
 
 describe('inRange', () => {
@@ -100,6 +151,44 @@ describe('inRange', () => {
     expect(test(new Date(2016, 0, 1))).toBe(false);
     expect(test(new Date(2013, 0, 1))).toBe(false);
     expect(test(new Date(2014, 6, 6))).toBe(true);
+  });
+});
+
+describe('isValidDate', () => {
+  it('should tell if a date object is valid', () => {
+    expect(dateify.isValidDate(new Date())).toBe(true);
+    expect(dateify.isValidDate(new Date(''))).toBe(false);
+  });
+
+  it('should tell if a date string is valid', () => {
+    expect(dateify.isValidDate('')).toBe(false);
+    expect(dateify.isValidDate(new Date().toString())).toBe(true);
+  });
+
+  it('should return false for all else', () => {
+    expect(dateify.isValidDate({})).toBe(false);
+    expect(dateify.isValidDate(null)).toBe(false);
+    expect(dateify.isValidDate(3)).toBe(false);
+  });
+});
+
+describe('isValidTime', () => {
+  it('should tell if a date object is valid', () => {
+    expect(dateify.isValidTime(new Date())).toBe(true);
+    expect(dateify.isValidTime(new Date(''))).toBe(false);
+  });
+
+  it('should true for any number but NaN', () => {
+    expect(dateify.isValidTime(123)).toBe(true);
+    expect(dateify.isValidTime(-123)).toBe(true);
+    expect(dateify.isValidTime(0)).toBe(true);
+    expect(dateify.isValidTime(NaN)).toBe(false);
+  });
+
+  it('should return false for all else', () => {
+    expect(dateify.isValidTime({})).toBe(false);
+    expect(dateify.isValidTime(null)).toBe(false);
+    expect(dateify.isValidTime(true)).toBe(false);
   });
 });
 

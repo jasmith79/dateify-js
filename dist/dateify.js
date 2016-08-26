@@ -16,7 +16,7 @@
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.inRange = exports.order = exports.destructure = exports.toUTCDateString = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
+  exports.isValidTime = exports.isValidDate = exports.inRange = exports.order = exports.destructure = exports.toUTCDateString = exports.isLeapYear = exports.deDateify = exports.dateify = exports.toPaperTime = exports.toPaperDate = exports.toTimeInput = exports.toDateInput = undefined;
 
   var d = _interopRequireWildcard(_decoratorsJs);
 
@@ -88,6 +88,211 @@
       }
     };
   }();
+
+  /*   Polyfills  */
+  if (typeof Number.isNaN !== 'function') {
+    Number.isNaN = function (x) {
+      return x !== x;
+    };
+  }
+
+  // returns [yr, mn, dy, hr, min, sec] in *local* time for the executing JS environment.
+  // NOTE: months are 0-11.
+  var destructure = typed.Dispatcher([typed.guard('date', function (d) {
+    return Number.isNaN(d.getTime()) ? [] : [d.getFullYear(), d.getMonth(), //no +1
+    d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()];
+  }), typed.guard('__dateString', function (s) {
+    var d = new Date(s);
+    return Number.isNaN(d.getTime()) ? [] : [d.getFullYear(), d.getMonth(), //no +1
+    d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()];
+  }), typed.guard('string', function (s) {
+    var result = [];
+    var dateTimeSplitter = s.indexOf('T') === -1 ? ' ' : 'T';
+    var dateSplitter = s.indexOf('-') === -1 ? '/' : '-';
+
+    var _s$split = s.split(dateTimeSplitter);
+
+    var _s$split2 = _slicedToArray(_s$split, 2);
+
+    var date = _s$split2[0];
+    var t = _s$split2[1];
+
+    var dateArr = date.split(dateSplitter).map(Number);
+
+    // valid dates must have day/month/yr and there is no year 0.
+    var validDate = dateArr.length === 3 && dateArr.every(function (n) {
+      return n > 0;
+    });
+
+    if (validDate) {
+      var _dateArr = _slicedToArray(dateArr, 3);
+
+      var first = _dateArr[0];
+      var second = _dateArr[1];
+      var third = _dateArr[2];
+
+      var yr = void 0,
+          mn = void 0,
+          dy = void 0;
+
+      switch (true) {
+        case first > 31:
+          if (second < 13) {
+            var _dateArr2 = _slicedToArray(dateArr, 3);
+
+            yr = _dateArr2[0];
+            mn = _dateArr2[1];
+            dy = _dateArr2[2];
+          } else {
+            var _dateArr3 = _slicedToArray(dateArr, 3);
+
+            yr = _dateArr3[0];
+            dy = _dateArr3[1];
+            mn = _dateArr3[2];
+          }
+
+          mn -= 1;
+          break;
+
+        case third > 31:
+          if (first < 13) {
+            var _dateArr4 = _slicedToArray(dateArr, 3);
+
+            mn = _dateArr4[0];
+            dy = _dateArr4[1];
+            yr = _dateArr4[2];
+          } else {
+            var _dateArr5 = _slicedToArray(dateArr, 3);
+
+            dy = _dateArr5[0];
+            mn = _dateArr5[1];
+            yr = _dateArr5[2];
+          }
+
+          mn -= 1;
+          break;
+
+        default:
+          dy = mn = yr = null;
+          break;
+      }
+
+      result.push(yr, mn, dy);
+    } else {
+      t = date;
+      result.push(null, null, null);
+    }
+
+    var tzSplitter = null;
+    if (t) {
+      tzSplitter = function (t) {
+        var hasZ = t.indexOf('Z') !== -1;
+        var hasPlus = t.indexOf('+') !== -1;
+        var hasDash = t.indexOf('-') !== -1;
+        var splitters = [hasZ, hasDash, hasPlus].reduce(function (acc, bool, i) {
+          if (bool) {
+            acc.push(i);
+          }
+          return acc;
+        }, []);
+
+        switch (splitters.length) {
+          case 0:
+            return null;
+          case 1:
+            return ['Z', '-', '+'][splitters[0]];
+          default:
+            throw new Error('Attempted to parse a datestring with both a \'Z\' and\n              a timezone.');
+        }
+      }(t);
+    }
+
+    var _ref = tzSplitter ? t.split(tzSplitter) : [t, null];
+
+    var _ref2 = _slicedToArray(_ref, 2);
+
+    var time = _ref2[0];
+    var tz = _ref2[1];
+
+    var timeArr = time ? time.split(':').map(Number) : [];
+    var tzOff = tz ? function () {
+      // in ms
+      var sign = tzSplitter;
+
+      var _tz$split = tz.split(':');
+
+      var _tz$split2 = _slicedToArray(_tz$split, 2);
+
+      var hours = _tz$split2[0];
+      var minutes = _tz$split2[1];
+
+      return (Number('' + sign + hours) * 60 + Number('' + sign + minutes)) * 60 * 1000;
+    }() : null;
+
+    var _timeArr = _slicedToArray(timeArr, 3);
+
+    var hrs = _timeArr[0];
+    var min = _timeArr[1];
+    var sec = _timeArr[2];
+
+    var validTime = hrs >= 0 && hrs <= 24 && min >= 0 && min <= 59 && (sec == null || sec >= 0 && sec <= 59);
+
+    if (validTime) {
+      result.push(hrs, min);
+      if (sec != null) {
+        result.push(sec);
+      }
+    }
+
+    if (result[0] && tzSplitter != null) {
+      var tempDate = _Date.apply(undefined, result);
+      var localOffset = tempDate.getTimezoneOffset() * 60 * 1000;
+      var adjustedTime = tempDate.getTime() - localOffset - tzOff;
+      return destructure(_Date(adjustedTime));
+    } else if (result.every(function (x) {
+      return x == null;
+    })) {
+      return [];
+    } else {
+      return result;
+    }
+  })]);
+
+  var _isValidDate = function _isValidDate(a) {
+    var arr = destructure(a);
+    return arr.length > 2 ? arr.slice(0, 3).every(function (n) {
+      return typed.isType('number', n);
+    }) : false;
+  };
+
+  var _isValidTime = function _isValidTime(a) {
+    var arr = destructure(a);
+    return arr.length > 4 ? arr.slice(3, 5).every(function (n) {
+      return typed.isType('number', n);
+    }) : false;
+  };
+
+  var isValidDate = typed.Dispatcher([typed.guard('date', function (d) {
+    return _isValidDate(d);
+  }), typed.guard('string', function (s) {
+    return _isValidDate(s);
+  })]);
+
+  isValidDate.setDefault(function (x) {
+    return false;
+  });
+
+  var isValidTime = typed.Dispatcher([typed.guard('date', function (d) {
+    return _isValidTime(d);
+  }), typed.guard('string', function (s) {
+    return _isValidTime(s);
+  }), typed.guard('number', function (n) {
+    return !Number.isNaN(n);
+  })]);
+
+  isValidTime.setDefault(function (x) {
+    return false;
+  });
 
   /*   Constants   */
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -234,142 +439,17 @@
     return _upTime(_ensurePaper(arg));
   };
 
-  // extractDateParts :: ISODateString -> [Number]
-  // extractDateParts :: DateString -> [Number]
-  // extractDateParts :: Date -> [Number]
-  var extractDateParts = typed.Dispatcher([typed.guard('__isoDateString', function (str) {
-    var timeSplitter = str.indexOf('T') === -1 ? ' ' : 'T';
-    var dateSplitter = str.indexOf('-') >= 0 ? '-' : '/';
-
-    var _str$split = str.split(timeSplitter);
-
-    var _str$split2 = _slicedToArray(_str$split, 2);
-
-    var date = _str$split2[0];
-    var time = _str$split2[1];
-
-    var hr = void 0,
-        min = void 0,
-        sec = void 0,
-        hasTZ = void 0;
-    if (time) {
-      var hasZ = time.indexOf('Z') !== -1;
-      hasTZ = time.match(/[-+][01][0-9]:[0-5][0-9]/);
-      if (hasZ && hasTZ) {
-        throw new Error('DateError: string ' + str + ' contains both \'Z\' and a timezone.');
-      }
-      var timestr = void 0;
-      switch (false) {
-        case !hasZ:
-          var _time$split = time.split('Z');
-
-          var _time$split2 = _slicedToArray(_time$split, 1);
-
-          timestr = _time$split2[0];
-
-          break;
-        case !hasTZ:
-          var _time$split3 = time.split(/[+-]/);
-
-          var _time$split4 = _slicedToArray(_time$split3, 1);
-
-          timestr = _time$split4[0];
-
-          break;
-        default:
-          timestr = time;
-          break;
-      }
-
-      var _timestr$split$map = timestr.split(':').map(function (x) {
-        return +x;
-      });
-
-      var _timestr$split$map2 = _slicedToArray(_timestr$split$map, 3);
-
-      hr = _timestr$split$map2[0];
-      min = _timestr$split$map2[1];
-      sec = _timestr$split$map2[2];
-    }
-
-    var _date$split$map = date.split(dateSplitter).map(function (x) {
-      return +x;
-    });
-
-    var _date$split$map2 = _slicedToArray(_date$split$map, 3);
-
-    var first = _date$split$map2[0];
-    var second = _date$split$map2[1];
-    var third = _date$split$map2[2];
-
-    var _ref = first > 11 || third < 32 ? [first, second, third] : [third, second, first];
-
-    var _ref2 = _slicedToArray(_ref, 3);
-
-    var yr = _ref2[0];
-    var mn = _ref2[1];
-    var day = _ref2[2];
-
-    var arr = [yr, mn - 1, day, hr, min, sec].map(function (x) {
-      return x || 0;
-    });
-    return arr;
-    // return !hasTZ ?
-    //   arr :
-    //   (() => {
-    //     let sign = hasTZ[0][0];
-    //     let [hours, minutes] = hasTZ[0].slice(1, hasTZ[0].length).split(':');
-    //     let tzMin = (+(sign + hours) * 60) + +(sign + minutes);
-    //     return [_Date(...arr).getTime() - (tzMin * 60 * 1000)];
-    //   })();
-  }), typed.guard('__dateString', function (s) {
-    var _s$split = s.split(' ');
-
-    var _s$split2 = _slicedToArray(_s$split, 6);
-
-    var month = _s$split2[1];
-    var dy = _s$split2[2];
-    var year = _s$split2[3];
-    var time = _s$split2[4];
-    var timezone = _s$split2[5];
-
-    var mon = MONTHS.indexOf(month);
-    var day = +dy;
-    var yr = +year;
-
-    var _ref3 = time ? time.split(':').map(function (x) {
-      return +x;
-    }) : [0, 0, 0];
-
-    var _ref4 = _slicedToArray(_ref3, 3);
-
-    var hr = _ref4[0];
-    var min = _ref4[1];
-    var sec = _ref4[2];
-
-    var tzOff = false; //s.match(/[-+][01][0-9][0-5][0-9]/);
-    var arr = [yr, mon, day, hr, min, sec].map(function (x) {
-      return x || 0;
-    });
-    return !tzOff ? arr : function () {
-      var sign = tzOff[0][0];
-      var rest = tzOff[0].slice(1, tzOff[0].length);
-      var hours = rest.slice(0, 2);
-      var minutes = rest.slice(2, 4);
-      var tzMin = +(sign + hours) * 60 + +(sign + minutes);
-      return [_Date.apply(undefined, _toConsumableArray(arr)).getTime() - tzMin * 60 * 1000];
-    }();
-  }), typed.guard('date', function (d) {
-    return [d.getFullYear(), d.getMonth(), //no +1
-    d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()];
-  })]);
-
   // dateify :: String   -> Date
   // dateify :: Number   -> Date
   // dateify :: Date     -> Date
   // dateify :: [Number] -> Date
   var dateify = typed.Dispatcher([typed.guard('string', function (s) {
-    return _Date.apply(undefined, _toConsumableArray(extractDateParts(s)));
+    var parsed = destructure(s);
+    if (!parsed.length) {
+      console.warn('Attempted to parse non-date string ' + s + ' as a date');
+      return new Date(''); // invalid date
+    }
+    return _Date.apply(undefined, _toConsumableArray(parsed));
   }), typed.guard('number', function (n) {
     return _Date(n);
   }), typed.guard('date', function (d) {
@@ -381,16 +461,16 @@
   // deDateify :: Date -> ISODateString
   // returns an ISO 8601 datestring with timezone
   var deDateify = typed.guard('date', function (d) {
-    var _extractDateParts = extractDateParts(d);
+    var _destructure = destructure(d);
 
-    var _extractDateParts2 = _slicedToArray(_extractDateParts, 6);
+    var _destructure2 = _slicedToArray(_destructure, 6);
 
-    var yr = _extractDateParts2[0];
-    var mn = _extractDateParts2[1];
-    var dy = _extractDateParts2[2];
-    var hr = _extractDateParts2[3];
-    var min = _extractDateParts2[4];
-    var sec = _extractDateParts2[5];
+    var yr = _destructure2[0];
+    var mn = _destructure2[1];
+    var dy = _destructure2[2];
+    var hr = _destructure2[3];
+    var min = _destructure2[4];
+    var sec = _destructure2[5];
 
     var tz = d.getTimezoneOffset();
     var sign = tz > 0 ? '-' : '+';
@@ -429,16 +509,16 @@
     var d = dateify(arg);
     var date = new Date(d.getTime() + d.getTimezoneOffset() * 60 * 1000);
 
-    var _extractDateParts3 = extractDateParts(date);
+    var _destructure3 = destructure(date);
 
-    var _extractDateParts4 = _slicedToArray(_extractDateParts3, 6);
+    var _destructure4 = _slicedToArray(_destructure3, 6);
 
-    var yr = _extractDateParts4[0];
-    var mn = _extractDateParts4[1];
-    var dy = _extractDateParts4[2];
-    var hr = _extractDateParts4[3];
-    var min = _extractDateParts4[4];
-    var sec = _extractDateParts4[5];
+    var yr = _destructure4[0];
+    var mn = _destructure4[1];
+    var dy = _destructure4[2];
+    var hr = _destructure4[3];
+    var min = _destructure4[4];
+    var sec = _destructure4[5];
 
     return yr + '-' + _padInt(mn + 1) + '-' + _padInt(dy) + ('T' + _padInt(hr) + ':' + _padInt(min) + ':' + _padInt(sec) + 'Z');
   };
@@ -479,7 +559,11 @@
   exports.deDateify = deDateify;
   exports.isLeapYear = isLeapYear;
   exports.toUTCDateString = toUTCDateString;
-  exports.destructure = extractDateParts;
+  exports.
+  //destructure as destructure,
+  destructure = destructure;
   exports.order = order;
   exports.inRange = inRange;
+  exports.isValidDate = isValidDate;
+  exports.isValidTime = isValidTime;
 });
