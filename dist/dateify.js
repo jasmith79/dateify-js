@@ -185,7 +185,9 @@
     var date = _s$split2[0];
     var t = _s$split2[1];
 
-    var dateArr = date.split(dateSplitter).map(Number);
+    var dateArr = date.split(dateSplitter).filter(function (x) {
+      return x;
+    }).map(Number);
 
     // valid dates must have day/month/yr and there is no year 0.
     var validDate = dateArr.length === 3 && dateArr.every(function (n) {
@@ -282,7 +284,9 @@
     var time = _ref2[0];
     var tz = _ref2[1];
 
-    var timeArr = time ? time.split(':').map(Number) : [];
+    var timeArr = time ? time.split(':').filter(function (x) {
+      return x;
+    }).map(Number) : [];
     var tzOff = tz ? function () {
       // in ms
       var sign = tzSplitter;
@@ -363,52 +367,29 @@
   });
 
   // _upgradeInput :: String -> HTMLInputElement -> HTMLInputElement
-  var _upgradeInput = function (timeValidator, dateValidator) {
-    return typed.guard(function (type, input) {
+  var _upgradeInput = typed.guard(function (type, input) {
 
-      //right now date type is not supported in phantomjs so the tests all work, but if it starts
-      //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
-      if (DATE_TYPE_SUPPORTED) {
-        input.setAttribute('type', type);
-      } else {
-        (function () {
-          input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
-          input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
-          input.value = input.DEFAULT;
-          var validfn = type === 'date' ? dateValidator : timeValidator;
+    //right now date type is not supported in phantomjs so the tests all work, but if it starts
+    //supporting date inputs we'll need to add a function to expose the custom stuff for testing.
+    if (DATE_TYPE_SUPPORTED) {
+      input.setAttribute('type', type);
+    } else {
+      (function () {
+        input.setAttribute('pattern', type === 'date' ? VALID_DATE : VALID_TIME);
+        input.DEFAULT = type === 'date' ? DATE_DEFAULT : TIME_DEFAULT;
+        input.value = input.DEFAULT;
+        var validfn = type === 'date' ? isValidDate : isValidTime;
 
-          input.validate = function (fn) {
-            var ctx = this;
-            ctx.addEventListener('input', wait500(function (e) {
-              ctx.valid = false;
-              validfn.call(ctx, fn);
-            }));
-          };
-          input.validate(function (e) {
-            if (!this.value) {
-              this.value = this.DEFAULT;
-            }
-          });
-        })();
-      }
-      return input;
-    });
-  }(function (fn) {
-    var def = this.value.match(TIME_DEF_REGEX);
-    var valid = def || this.value.match(VALID_TIME);
-    if (!valid) {
-      fn.call(this, this);
-    } else {
-      this.valid = true;
+        input.addEventListener('input', wait500(function (e) {
+          if (!input.value) {
+            input.value = input.DEFAULT;
+          } else {
+            input.isValid = validfn(input.value);
+          }
+        }));
+      })();
     }
-  }, function (fn) {
-    var def = this.value.match(DATE_DEF_REGEX);
-    var valid = def || this.value.match(VALID_DATE);
-    if (!valid) {
-      fn.call(this, this);
-    } else {
-      this.valid = true;
-    }
+    return input;
   });
 
   // _defaultTag :: String -> Maybe HTMLElement -> HTMLElement
@@ -564,7 +545,9 @@
   exports.deDateify = deDateify;
   exports.isLeapYear = isLeapYear;
   exports.toUTCDateString = toUTCDateString;
-  exports.destructure = destructure;
+  exports.
+  //destructure as destructure,
+  destructure = destructure;
   exports.order = order;
   exports.inRange = inRange;
   exports.isValidDate = isValidDate;

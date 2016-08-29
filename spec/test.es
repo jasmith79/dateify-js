@@ -227,17 +227,17 @@ if (HTML) {
     it('should validate dates', function(done) {
       if (check.getAttribute('type') !== 'date') {
         let input = dateify.toDateInput();
-        let foo = null;
-        input.validate((input) => foo = input.value);
         input.value = '2014-';
+        let foo = null;
         input.dispatchEvent(inputEvent);
         setTimeout(() => {
-          expect(foo).toBe('2014-');
-          expect(input.valid).toBe(false);
+          expect(input.value).toBe('2014-');
+          foo = input.value;
+          expect(input.isValid).toBe(false);
           input.value = '2014-01-01';
           input.dispatchEvent(inputEvent);
           setTimeout(() => {
-            expect(input.valid).toBe(true);
+            expect(input.isValid).toBe(true);
             expect(foo).toBe('2014-');
             done();
           }, 510);
@@ -281,16 +281,15 @@ if (HTML) {
       if (tcheck.getAttribute('type') !== 'time') {
         let input = dateify.toTimeInput(document.createElement('input'));
         let foo = null;
-        input.validate((input) => foo = input.value);
         input.value = '10:';
         input.dispatchEvent(inputEvent);
         setTimeout(() => {
-          expect(foo).toBe('10:');
-          expect(input.valid).toBe(false);
+          foo = input.value;
+          expect(input.isValid).toBe(false);
           input.value = '10:00';
           input.dispatchEvent(inputEvent);
           setTimeout(() => {
-            expect(input.valid).toBe(true);
+            expect(input.isValid).toBe(true);
             expect(foo).toBe('10:');
             done();
           }, 510);
@@ -358,16 +357,15 @@ if (HTML) {
         if (check.getAttribute('type') !== 'date') {
           let input = dateify.toPaperDate();
           let foo = null;
-          input.validate((input) => foo = input.value);
           input.value = '2014-';
           input.dispatchEvent(inputEvent);
           setTimeout(() => {
-            expect(foo).toBe('2014-');
-            expect(input.valid).toBe(false);
+            foo = input.value;
+            expect(input.isValid).toBe(false);
             input.value = '2014-01-01';
             input.dispatchEvent(inputEvent);
             setTimeout(() => {
-              expect(input.valid).toBe(true);
+              expect(input.isValid).toBe(true);
               expect(foo).toBe('2014-');
               done();
             }, 510);
@@ -436,16 +434,15 @@ if (HTML) {
         if (tcheck.getAttribute('type') !== 'time') {
           let input = dateify.toPaperTime();
           let foo = null;
-          input.validate((input) => foo = input.value);
           input.value = '10:';
           input.dispatchEvent(inputEvent);
           setTimeout(() => {
-            expect(foo).toBe('10:');
-            expect(input.valid).toBe(false);
+            foo = input.value;
+            expect(input.isValid).toBe(false);
             input.value = '10:00';
             input.dispatchEvent(inputEvent);
             setTimeout(() => {
-              expect(input.valid).toBe(true);
+              expect(input.isValid).toBe(true);
               expect(foo).toBe('10:');
               done();
             }, 510);

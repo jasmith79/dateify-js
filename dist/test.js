@@ -278,19 +278,17 @@
           if (check.getAttribute('type') !== 'date') {
             (function () {
               var input = dateify.toDateInput();
-              var foo = null;
-              input.validate(function (input) {
-                return foo = input.value;
-              });
               input.value = '2014-';
+              var foo = null;
               input.dispatchEvent(inputEvent);
               setTimeout(function () {
-                expect(foo).toBe('2014-');
-                expect(input.valid).toBe(false);
+                expect(input.value).toBe('2014-');
+                foo = input.value;
+                expect(input.isValid).toBe(false);
                 input.value = '2014-01-01';
                 input.dispatchEvent(inputEvent);
                 setTimeout(function () {
-                  expect(input.valid).toBe(true);
+                  expect(input.isValid).toBe(true);
                   expect(foo).toBe('2014-');
                   done();
                 }, 510);
@@ -336,18 +334,15 @@
             (function () {
               var input = dateify.toTimeInput(document.createElement('input'));
               var foo = null;
-              input.validate(function (input) {
-                return foo = input.value;
-              });
               input.value = '10:';
               input.dispatchEvent(inputEvent);
               setTimeout(function () {
-                expect(foo).toBe('10:');
-                expect(input.valid).toBe(false);
+                foo = input.value;
+                expect(input.isValid).toBe(false);
                 input.value = '10:00';
                 input.dispatchEvent(inputEvent);
                 setTimeout(function () {
-                  expect(input.valid).toBe(true);
+                  expect(input.isValid).toBe(true);
                   expect(foo).toBe('10:');
                   done();
                 }, 510);
@@ -421,18 +416,15 @@
               (function () {
                 var input = dateify.toPaperDate();
                 var foo = null;
-                input.validate(function (input) {
-                  return foo = input.value;
-                });
                 input.value = '2014-';
                 input.dispatchEvent(inputEvent);
                 setTimeout(function () {
-                  expect(foo).toBe('2014-');
-                  expect(input.valid).toBe(false);
+                  foo = input.value;
+                  expect(input.isValid).toBe(false);
                   input.value = '2014-01-01';
                   input.dispatchEvent(inputEvent);
                   setTimeout(function () {
-                    expect(input.valid).toBe(true);
+                    expect(input.isValid).toBe(true);
                     expect(foo).toBe('2014-');
                     done();
                   }, 510);
@@ -507,18 +499,15 @@
               (function () {
                 var input = dateify.toPaperTime();
                 var foo = null;
-                input.validate(function (input) {
-                  return foo = input.value;
-                });
                 input.value = '10:';
                 input.dispatchEvent(inputEvent);
                 setTimeout(function () {
-                  expect(foo).toBe('10:');
-                  expect(input.valid).toBe(false);
+                  foo = input.value;
+                  expect(input.isValid).toBe(false);
                   input.value = '10:00';
                   input.dispatchEvent(inputEvent);
                   setTimeout(function () {
-                    expect(input.valid).toBe(true);
+                    expect(input.isValid).toBe(true);
                     expect(foo).toBe('10:');
                     done();
                   }, 510);
