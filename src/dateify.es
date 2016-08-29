@@ -16,6 +16,81 @@ if (typeof Number.isNaN !== 'function') {
   Number.isNaN = (x => x !== x);
 }
 
+/*   Constants   */
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+];
+
+//none of the regexs are foolproof, but good enough for a quick and dirty check
+
+//ISO 8601
+const VALID_DATE = /(?:[0-9]{4}[-\/][0-1][0-9][-\/][0-3][0-9])|(?:[0-1][0-9][-\/][0-3][0-9][-\/][0-9]{4})/;
+const VALID_TIME = /[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?[+-Z]?(?:[0-2][0-9]:[0-5][0-9])?/;
+
+//ISO-conforming defaults
+const DATE_DEF_REGEX = /^y{1,4}-?m{0,2}-?d{0,2}/i;
+const TIME_DEF_REGEX = /^h{1,2}:?m{0,2}:?s{0,2}\s*[ap]?/i;
+const DATE_DEFAULT   = 'yyyy-mm-dd';
+const TIME_DEFAULT   = 'hh:mm';
+const FN_NAME_REGEX  = /^\s*function\s*(\S*)\s*\(/;
+
+//matches Date::toString() and Date::toDateString()
+const DATESTR_REGEX  = new RegExp([
+  /[A-Z][a-z]{2} [A-Z][a-z]{2} [0-3][0-9] [0-9]{4}/,                          //date
+  /(?: [0-9]{2}:[0-9]{2}:[0-9]{2} GMT[-+][0-2][0-9][0-5][0-9] \([A-Z]{3}\))?/ //time
+].map(r => r.source).join(''), 'g');
+
+//See what we're dealing with in terms of browser support. Not entirely sure how good the
+//pattern check is, but its the approach Modernizr takes so I'm assuming it works well enough.
+// const [DATE_TYPE_SUPPORTED, PATTERN_SUPPORTED, INPUT_EVENT_SUPPORTED] = (() => {
+//   let input = document.createElement('input');
+//   let notDate = 'not-a-date';
+//   input.setAttribute('type', 'date');
+//   input.setAttribute('value', notDate);
+//   let inputEvent;
+//   try {
+//     input.dispatchEvent(new Event('input'));
+//     inputEvent = true;
+//   } catch (e) {
+//     inputEvent = false;
+//   }
+//   return [input.value !== notDate, 'pattern' in input, inputEvent];
+// })();
+
+const DATE_TYPE_SUPPORTED = (() => {
+  if (typeof document === 'undefined') {
+    return false;
+  } else {
+    let input = document.createElement('input');
+    let notDate = 'not-a-date';
+    input.setAttribute('type', 'date');
+    input.setAttribute('value', notDate);
+    return input.value !== notDate;
+  }
+})();
+
+const _padInt = d.padInt(2);
+const _Date = typed.guardClass(0, Date);
+const wait500 = d.debounce(500);
+
+typed.defType('__dateString', s => typed.isType('string', s) && s.match(DATESTR_REGEX));
+typed.defType('__isoDateString', s => typed.isType('string', s) && s.match(VALID_DATE));
+typed.defType(
+  '__Array<Number>',
+  arr => typed.isType('array', arr) && arr.every(x => !Number.isNaN(+x))
+);
+
 // returns [yr, mn, dy, hr, min, sec] in *local* time for the executing JS environment.
 // NOTE: months are 0-11.
 let destructure = typed.Dispatcher([
@@ -177,86 +252,6 @@ let isValidTime = typed.Dispatcher([
 
 isValidTime.setDefault(x => false);
 
-/*   Constants   */
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec'
-];
-
-//none of the regexs are foolproof, but good enough for a quick and dirty check
-
-//ISO 8601
-const VALID_DATE = /(?:[0-9]{4}[-\/][0-1][0-9][-\/][0-3][0-9])|(?:[0-1][0-9][-\/][0-3][0-9][-\/][0-9]{4})/;
-const VALID_TIME = /[0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?[+-Z]?(?:[0-2][0-9]:[0-5][0-9])?/;
-
-//ISO-conforming defaults
-const DATE_DEF_REGEX = /^y{1,4}-?m{0,2}-?d{0,2}/i;
-const TIME_DEF_REGEX = /^h{1,2}:?m{0,2}:?s{0,2}\s*[ap]?/i;
-const DATE_DEFAULT   = 'yyyy-mm-dd';
-const TIME_DEFAULT   = 'hh:mm';
-const FN_NAME_REGEX  = /^\s*function\s*(\S*)\s*\(/;
-
-//matches Date::toString() and Date::toDateString()
-const DATESTR_REGEX  = new RegExp([
-  /[A-Z][a-z]{2} [A-Z][a-z]{2} [0-3][0-9] [0-9]{4}/,                          //date
-  /(?: [0-9]{2}:[0-9]{2}:[0-9]{2} GMT[-+][0-2][0-9][0-5][0-9] \([A-Z]{3}\))?/ //time
-].map(r => r.source).join(''), 'g');
-
-//See what we're dealing with in terms of browser support. Not entirely sure how good the
-//pattern check is, but its the approach Modernizr takes so I'm assuming it works well enough.
-// const [DATE_TYPE_SUPPORTED, PATTERN_SUPPORTED, INPUT_EVENT_SUPPORTED] = (() => {
-//   let input = document.createElement('input');
-//   let notDate = 'not-a-date';
-//   input.setAttribute('type', 'date');
-//   input.setAttribute('value', notDate);
-//   let inputEvent;
-//   try {
-//     input.dispatchEvent(new Event('input'));
-//     inputEvent = true;
-//   } catch (e) {
-//     inputEvent = false;
-//   }
-//   return [input.value !== notDate, 'pattern' in input, inputEvent];
-// })();
-
-const DATE_TYPE_SUPPORTED = (() => {
-  if (typeof document === 'undefined') {
-    return false;
-  } else {
-    let input = document.createElement('input');
-    let notDate = 'not-a-date';
-    input.setAttribute('type', 'date');
-    input.setAttribute('value', notDate);
-    return input.value !== notDate;
-  }
-})();
-
-// padInt :: Number -> String
-const _padInt = d.padInt(2);
-
-//_makeDate :: Number -> Date
-// const _makeDate = d.unNew(0, Date);
-const _Date = typed.guardClass(0, Date);
-typed.defType(
-  '__Array<Number>',
-  arr => typed.isType('array', arr) && arr.every(x => !Number.isNaN(+x))
-);
-
-const wait500 = d.debounce(500);
-
-typed.defType('__dateString', s => typed.isType('string', s) && s.match(DATESTR_REGEX));
-typed.defType('__isoDateString', s => typed.isType('string', s) && s.match(VALID_DATE));
-
 // _upgradeInput :: String -> HTMLInputElement -> HTMLInputElement
 const _upgradeInput = ((timeValidator, dateValidator) => {
   return typed.guard((type, input) => {
@@ -395,6 +390,17 @@ const inRange = typed.guard(['date', 'date', 'date'], (a, b, test) => {
   return z <= y && z >= x;
 });
 
+const _toDateInputString = typed.guard('date', d => {
+  return `${d.getFullYear()}-${_padInt(d.getMonth() + 1)}-${_padInt(d.getDate())}`;
+});
+
+// toInputDateString :: Date -> String
+// toInputDateString :: String -> String
+const toInputDateString = typed.Dispatcher([
+  _toDateInputString,
+  typed.guard('string', s => _toDateInputString(dateify(s)))
+]);
+
 export {
   toDateInput,
   toTimeInput,
@@ -410,4 +416,5 @@ export {
   inRange,
   isValidDate,
   isValidTime,
+  toInputDateString,
 };
